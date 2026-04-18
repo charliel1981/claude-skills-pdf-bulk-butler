@@ -1,0 +1,16 @@
+{
+  "files.associations": {
+    "SKILL.md": "markdown",
+    "CLAUDE.md": "markdown"
+  },
+  "markdown.preview.breaks": true,
+  "editor.wordWrap": "on",
+  "editor.rulers": [100],
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "README.md": "CHANGELOG.md, CONTRIBUTING.md, LICENSE, install.sh, .gitignore, *.code-workspace",
+    "SKILL.md": "reference"
+  }
+}

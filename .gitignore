@@ -2,7 +2,9 @@
 *.swp
 *.swo
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 *.log
 node_modules/
 .env
