@@ -32,6 +32,7 @@ Catalog of every ConfigType. Claude reads this when building/editing DocConfig e
 | Inline list like "A, B, C" in a paragraph | `INLINE_REPEATER` |
 | Complex MS Word content control nesting | `CONTENT_CONTROLLER` + `ROWS_CONTROLLER` |
 | Show/hide a watermark | `TEXT_WATERMARK` |
+| Signature placeholder for SIGN Butler V2 | `SIGN_PLACEHOLDER` / `INITIAL_PLACEHOLDER` |
 
 ---
 
@@ -310,6 +311,22 @@ Nesting pattern: a `CONTENT_CONTROLLER` can parent another `CONTENT_CONTROLLER` 
 - `LINK` — external URL
 - `BOOKMARK` — internal document reference
 - `PICTURE` — image that is itself a hyperlink
+
+### `SIGN_PLACEHOLDER` / `INITIAL_PLACEHOLDER`
+
+**Purpose**: auto-placed signature / initial boxes for the SIGN Butler V2 integration. Configured on the PDF Butler (`cadmus_core`) side; consumed by SIGN Butler V2 (`cadmus_sign2`) at signing time.
+
+| Behaviour (Academy verbatim) | Detail |
+|---|---|
+| Auto-counter | Placeholders auto-increment across multiple signers (1, 2, 3, …) when looped over a LIST DataSource of stakeholders |
+| Numbering reset | "If you want to re-start the numbering from 1, use `-1` here" |
+| Size options | "100%, 75%, 50% or 25%" |
+| DataSource shape | LIST DataSource required for loop processing |
+| Sibling | `INITIAL_PLACEHOLDER` — same mechanics, for initials rather than full signatures |
+
+Exact backing field API names on `cadmus_core__ConfigType__c` are not published on the Academy — verify in-org if generating metadata programmatically. Full SIGN Butler V2 wiring (Pack + Actionable + Template) lives in the sibling [sf-sign-butler](../../sf-sign-butler/SKILL.md) skill.
+
+_Source: [SIGN_PLACEHOLDER ConfigType with PDF Butler](https://www.pdfbutler.com/academy/sign-butler-academy/sign-butler-v2/sign-butler-v2-sign_placeholder-configtype-with-pdf-butler/)._
 
 ### `COLOR_CELL` / `COLOR_ROW`
 

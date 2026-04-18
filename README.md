@@ -1,8 +1,8 @@
-# Claude Code skills for PDF Butler + BULK Butler
+# Claude Code skills for PDF Butler + BULK Butler + SIGN Butler V2
 
-> _**Created by Claude, for Claude.**_ Every reference file in this repo was researched, distilled, and written by Claude from PDF Butler's public Academy — then wired back into Claude Code as skills so future Claude sessions can answer PDF Butler / BULK Butler questions as a grounded specialist instead of guessing.
+> _**Created by Claude, for Claude.**_ Every reference file in this repo was researched, distilled, and written by Claude from the public CloudCrossing Academies — then wired back into Claude Code as skills so future Claude sessions can answer PDF Butler / BULK Butler / SIGN Butler V2 questions as a grounded specialist instead of guessing.
 
-Two [Claude Code](https://docs.claude.com/en/docs/claude-code) skills that turn Claude into a working specialist on the **PDF Butler** and **BULK Butler** Salesforce AppExchange packages (by CloudCrossing).
+Three [Claude Code](https://docs.claude.com/en/docs/claude-code) skills that turn Claude into a working specialist on the **PDF Butler**, **BULK Butler**, and **SIGN Butler V2** Salesforce AppExchange packages (by CloudCrossing).
 
 ![Skill bundle architecture](./docs/architecture.png)
 
@@ -12,6 +12,7 @@ Two [Claude Code](https://docs.claude.com/en/docs/claude-code) skills that turn 
 |---|---|---|
 | [`sf-pdf-butler`](./sf-pdf-butler/) | `cadmus_core` | Single-doc generation — DocConfigs, Packs, Actionables, Apex Convert API (all 31 ApexDoc classes), Agentforce-aware `PdfButlerCallable` cross-package dispatch, unit testing with `CadmusHttpCalloutMock`, native `PdfActions` watermarks, `@pdfbutler/migration-cli` (all 10 commands), LWC/Flow integration, every ConfigType + DataSource + Lightning component + Tip/Trick from the [PDF Butler Academy](https://www.pdfbutler.com/academy/pdf-butler-academy/) |
 | [`sf-bulk-butler`](./sf-bulk-butler/) | `cadmus_batch` | Bulk generation — Batch Info records with full field list, scheduled/Apex/Flow launches, per-record Run Actionables (Batch Size stays at 5–20, not forced to 1), report-driven batches with full `Reports.ReportManager` code, Batch Backend add-on with `RecordType = "Batch Backend"` + `BatchSize = 100` + merge/zip (`MERGED_PDF` / `ZIP_FILE`) output |
+| [`sf-sign-butler`](./sf-sign-butler/) | `cadmus_sign2` | Native e-signature on top of PDF Butler — Sign Request Templates with every verbatim UI field, the `cadmus_sign2.Actionable_SignButlerSilent` / `Actionable_SignButlerSignNow` Pack Actionables, `SIGN_PLACEHOLDER` / `INITIAL_PLACEHOLDER` ConfigType wiring, full 13-token `[[!SignButler.*!]]` merge set, `SignButlerEmails` template folder (35 templates across en/de/es/fr/nl), Reminder / Warning / Expiry batch jobs with cron + OWA / Reply-To strategies, Certificate of Completion (CoC — 7-signer cap), Custom Branding, VisualForce signing alternative |
 
 ## Why use these
 
@@ -40,9 +41,10 @@ Without the skill, asking Claude "how do I call PDF Butler from Apex?" gets a ge
 git clone https://github.com/charliel1981/claude-skills-pdf-bulk-butler.git ~/claude-skills-pdf-bulk-butler
 ln -s ~/claude-skills-pdf-bulk-butler/sf-pdf-butler ~/.claude/skills/sf-pdf-butler
 ln -s ~/claude-skills-pdf-bulk-butler/sf-bulk-butler ~/.claude/skills/sf-bulk-butler
+ln -s ~/claude-skills-pdf-bulk-butler/sf-sign-butler ~/.claude/skills/sf-sign-butler
 ```
 
-Later, `cd ~/claude-skills-pdf-bulk-butler && git pull` updates both skills.
+Later, `cd ~/claude-skills-pdf-bulk-butler && git pull` updates all three skills.
 
 ### Option 2 — one-shot install script
 
@@ -56,12 +58,12 @@ See [`install.sh`](./install.sh) for what it does.
 
 ```bash
 mkdir -p ~/.claude/skills
-cp -R sf-pdf-butler sf-bulk-butler ~/.claude/skills/
+cp -R sf-pdf-butler sf-bulk-butler sf-sign-butler ~/.claude/skills/
 ```
 
 ### Verifying the install
 
-Start a Claude Code session and check `/skills` — you should see both listed. Or ask Claude "what's the cadmus_core Apex entry point?" — if it answers `ConvertController.convertWithWrapper`, the skill is live.
+Start a Claude Code session and check `/skills` — you should see all three listed. Or ask Claude "what's the cadmus_core Apex entry point?" — if it answers `ConvertController.convertWithWrapper`, the PDF Butler skill is live. Ask "what Actionable class does SIGN Butler V2 use?" — `cadmus_sign2.Actionable_SignButlerSilent` confirms the SIGN Butler skill.
 
 ## How it works
 
@@ -75,7 +77,7 @@ More on Claude Code skills: [code.claude.com/docs/en/skills](https://code.claude
 
 ## What's NOT in here
 
-- Sibling Butler products — **SIGN Butler**, **FORM Butler**, **COLLABORATION Butler**, **CONTRACT Butler** each have their own Academy and deserve their own skills. PRs welcome, or they'll be added in future versions.
+- Sibling Butler products — **FORM Butler**, **COLLABORATION Butler**, **CONTRACT Butler**, **AGENT Butler** each have their own Academy and deserve their own skills. PRs welcome, or they'll be added in future versions.
 - External PDF reference docs linked from the Academy (`PDF Butler via Invocable v1.pdf`, `APEXActionablesKEYVALUES.pdf`, etc.) — noted as pointers in the skill, not inlined.
 - YouTube tutorial transcripts — many Academy pages defer detail to video; these skills capture the written content only.
 - Per-tenant credentials / org-specific config — by design.

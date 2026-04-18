@@ -208,10 +208,10 @@ When a user says "set up PDF Butler" or "check the install", run Steps 0–5 and
 
 ## Non-PDF-Butler dependencies
 
-- **SIGN Butler** — sister package for native e-signature Actionables
-- **FORM Butler** — sister package for embedded fillable forms (used by FSL)
-- **BULK Butler** — mass-generation sibling
-- **Collaboration Butler** (`cadmus_una`) — required for SharePoint image retrieval
-- **Peppol Invoicing** package — installs on top of PDF Butler for e-invoicing
+- **SIGN Butler V2** (`cadmus_sign2`) — sister package for native e-signature Actionables. Covered by the sibling skill [sf-sign-butler](../sf-sign-butler/SKILL.md).
+- **BULK Butler** (`cadmus_batch`) — mass-generation sibling. Covered by [sf-bulk-butler](../sf-bulk-butler/SKILL.md).
+- **FORM Butler** — sister package for embedded fillable forms (used by FSL). No dedicated skill yet.
+- **Collaboration Butler** (`cadmus_una`) — required for SharePoint image retrieval. No dedicated skill yet.
+- **Peppol Invoicing** package — installs on top of PDF Butler for e-invoicing. Covered in `reference/integrations.md`.
 
 Each has its own Academy/docs — this skill covers PDF Butler proper.

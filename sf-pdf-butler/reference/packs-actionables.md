@@ -66,9 +66,14 @@ Order within each phase is controlled by the Actionable `Order` field. Every Act
 
 ### SIGN Butler — native e-sign
 
-**Integration**: pairs with the SIGN Butler managed package.
+**Integration**: pairs with the SIGN Butler V2 managed package (namespace `cadmus_sign2`).
+**Actionable class**: `cadmus_sign2.Actionable_SignButlerSilent` (emails the signer) or `cadmus_sign2.Actionable_SignButlerSignNow` (redirects in-page, no email).
+**Record Type on Actionable**: `Sign Butler`. **When**: always `AFTER`.
+**Requires** on the Actionable: `Sign Request Template` lookup (the template defines stakeholders + emails + expiry + branding).
+**Placeholder ConfigType** on the PDF Butler side: `SIGN_PLACEHOLDER` / `INITIAL_PLACEHOLDER` (auto-counter, `-1` reset, 100/75/50/25% sizing). See `reference/configtypes.md`.
 **Use when**: you want everything in one vendor. Cheaper than DocuSign/AdobeSign per envelope at scale.
-Full config lives in the SIGN Butler Academy (separate product docs).
+
+Full SIGN Butler V2 coverage — template fields, Certificate of Completion, custom branding, reminder / warning / expiry batch jobs, `[[!SignButler.*!]]` email merge tokens, `SignButlerEmails` folder — lives in the sibling [sf-sign-butler](../../sf-sign-butler/SKILL.md) skill.
 
 ### DocuSign — push to DocuSign envelope
 

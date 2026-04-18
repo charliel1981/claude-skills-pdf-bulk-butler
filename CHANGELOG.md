@@ -2,6 +2,43 @@
 
 All notable changes to this skill bundle.
 
+## [0.3.0] — 2026-04-18 — New skill: sf-sign-butler (SIGN Butler V2)
+
+Third skill added to the bundle: **`sf-sign-butler`** (`cadmus_sign2` namespace, version v0.1.0) covering the full [SIGN Butler V2 Academy](https://www.pdfbutler.com/academy/sign-butler-academy/) (10 child pages) + the authoritative [Configuration Sign Butler V2.pdf](https://assets.pdfbutler.com/website/academy.folders/Configuration%20Sign%20Butler%20V2.pdf) (14 pages) linked from the Setup page.
+
+### New skill — `sf-sign-butler` v0.1.0
+
+Single-file skill (lean surface — ~5 confirmed Apex-level identifiers + UI-heavy configuration). Covers:
+
+- **The two Actionable classes** (verbatim from the Configuration PDF): `cadmus_sign2.Actionable_SignButlerSilent` (emails the signer) and `cadmus_sign2.Actionable_SignButlerSignNow` (redirects in-page, no email).
+- **Cross-package Pack + Actionable wiring**: Record Type `Sign Butler`, `When = AFTER`, Sign Request Template lookup.
+- **`SIGN_PLACEHOLDER` / `INITIAL_PLACEHOLDER` ConfigTypes** (on the PDF Butler side) — auto-counter, `-1` reset, 100/75/50/25% sizing, LIST DataSource loop.
+- **Sign Request Template** — every UI field verbatim (Template Definition, Expiry, Stakeholder, File mapping), including all four expiry numeric fields and the stakeholder Signature methods multi-select (`Scribble`, `Remote Sign`, `MultiFile`, `Qes`).
+- **`SignButlerEmails` folder** — 21+ template Developer Names across en/de/es/fr/nl × {OTP, Created, Reminder, Download, Expired}. Sharing requirement called out verbatim.
+- **13 email merge tokens** verbatim — `[[!SignButler.Sender.*!]]`, `[[!SignButler.Recipient.*!]]`, `[[!SignButler.SignURL!]]`, `[[!SignButler.DownloadURL!]]`, `[[!SignButler.MailOTP!]]`, `[[!SignButler.RejectionReason!]]`, `[[!SignButler.SignRequestName!]]`.
+- **Expiry batch jobs** — NOTIFY Batch Job CRON input, two OWA strategies (`Static OWA`, `OWA per User`, `Batch OWA`), two Reply-To values (`SIGN_REQUEST_OWNER`, `MASTER_RECORD_OWNER`), two expiration modes (`Fixed end date` / `DataSource and Date Field`).
+- **Certificate of Completion (CoC)** — license gate (verbatim), sealed-PDF guarantee, 7-signer cap.
+- **Custom Branding** (video-only Academy page — prose kept minimal; flagged).
+- **VisualForce as signing document** — full verbatim `<apex:page>` sample with `$Resource.SIG001TOSIG010`.
+- **Apex REST** — `cadmus_sign2.RestExportSignRequestTemplate` + `RestImportSignRequestTemplate` (inferred from Migration CLI URL paths — already published in `sf-pdf-butler/reference/deployment.md`).
+- **Post-install setup** walkthrough — 12 verbatim steps from the Configuration PDF, including Permission Sets (`SIGN Butler Admin`, `SIGN Butler User`), the `Sign_requests` child relationship on master objects, and the "Check credentials" button label.
+- **12 "verify in-org" caveats** — object API names, status picklists, batch class names, CoC toggle field, Branding field schema, stakeholder roles beyond `Signer`, Qes sub-picklist, Connected App / Named Credential names — all flagged honestly rather than invented.
+- Failure-mode table (11 rows) covering the most common Silent-vs-SignNow confusion, email-folder-not-shared, CoC limits, placeholder numbering resets, and NOTIFY batch scheduling.
+
+### `sf-pdf-butler` cross-links
+
+- `reference/packs-actionables.md` — SIGN Butler Actionable section now names the two verbatim classes and links to the new skill.
+- `reference/configtypes.md` — new `SIGN_PLACEHOLDER` / `INITIAL_PLACEHOLDER` section with verbatim behaviour; added to quick-chooser.
+- `SKILL.md` — "Non-PDF-Butler dependencies" now links to both sibling skills by name.
+
+### Repository
+
+- `install.sh` — adds `install_skill sf-sign-butler` after the existing two.
+- `README.md` — title changed to "PDF Butler + BULK Butler + SIGN Butler V2"; skill table gains a third row; install blocks include `sf-sign-butler`; "What's NOT in here" drops SIGN Butler from the missing-skills list.
+- `docs/architecture.png` — regenerated via Nano Banana Pro to show all three skills.
+
+---
+
 ## [0.2.0] — 2026-04-18 — cadmuscore ApexDoc audit, Migration CLI, Academy verbatim pass
 
 Three-part enrichment, single release:

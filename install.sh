@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Installer for the PDF Butler + BULK Butler Claude Code skills.
-# Symlinks both skills into ~/.claude/skills/ so `git pull` on this repo
+# Installer for the PDF Butler + BULK Butler + SIGN Butler V2 Claude Code skills.
+# Symlinks all three skills into ~/.claude/skills/ so `git pull` on this repo
 # automatically updates them.
 
 set -euo pipefail
@@ -34,6 +34,7 @@ install_skill() {
 
 install_skill sf-pdf-butler
 install_skill sf-bulk-butler
+install_skill sf-sign-butler
 
 echo
 echo "Done. Start a new Claude Code session and run /skills to verify."
