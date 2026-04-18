@@ -1,0 +1,29 @@
+{
+  "folders": [
+    {
+      "name": "claude-skills-pdf-bulk-butler",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.associations": {
+      "SKILL.md": "markdown",
+      "CLAUDE.md": "markdown"
+    },
+    "markdown.preview.breaks": true,
+    "editor.wordWrap": "on",
+    "editor.rulers": [100],
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.patterns": {
+      "README.md": "CHANGELOG.md, CONTRIBUTING.md, LICENSE, install.sh, .gitignore",
+      "SKILL.md": "reference"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "yzhang.markdown-all-in-one",
+      "davidanson.vscode-markdownlint",
+      "github.vscode-github-actions"
+    ]
+  }
+}
