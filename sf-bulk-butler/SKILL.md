@@ -9,7 +9,7 @@ description: >
   SharePoint save, and the Batch Backend high-throughput add-on.
 license: MIT
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: "Charlie Lang"
   sibling_skills:
     - "sf-pdf-butler (required — BULK Butler runs PDF Butler DocConfigs/Packs in a loop)"
@@ -37,21 +37,30 @@ Bulk-generate PDFs/DOCX from many Salesforce records at once. Runs **on top of P
 
 ## The Batch Info record — core config
 
-BULK Butler drives everything from a **Batch Info** record. Every batch run, scheduled or ad-hoc, references one of these.
+BULK Butler drives everything from a **Batch Info** record. Every batch run, scheduled or ad-hoc, references one of these. Labels below are verbatim from the [Initial Setup Academy page](https://www.pdfbutler.com/academy/bulk-butler-academy/bulk-butler/bulk-butler-initial-setup/).
 
 | Field | Purpose |
 |---|---|
-| **Name** | Human label |
-| **Cron** | Cron expression for scheduled runs, or `NA` for manual/Apex-triggered |
+| **Name** | Name of the Batch Info record |
+| **Cron** | Salesforce-supported Cron expression. For manual / Apex-triggered runs, put `NA` as the value. |
 | **SOQL** | Query returning the records to iterate |
-| **Emails** | Notification recipients on completion/failure (`;`-separated) |
-| **Doc Config** / **Pack** | Which PDF Butler template to run per record |
-| **Batch Size** | Records per chunk — **5 is default**, **1 if any Run-Actionable is configured** (per Actionable performance trade-off). Never set above 10 for safety. |
-| **Delivery Option** | `Attachments`, `Files`, `Base64`, `Files_Async`, etc. (same set as PDF Butler's `deliveryOverwrite`) |
-| **Locale Field API Name** / **Currency Field API Name** | Field on the iterated record supplying per-record locale/currency (so different records can render in different languages from the same batch) |
-| **Target Type** | `PDF` or `DOCX` — same semantics as `ConvertDataModel.targetType` |
+| **Count SOQL** | Same query as SOQL but counting rows, e.g. `SELECT Count() FROM Account`. Required for Batch Backend; the row count from Count SOQL must match the SOQL row count (WHERE and LIMIT clauses must match). |
+| **Emails** | **Comma-separated** list of email recipients for the job status email |
+| **Doc Config** | Lookup to the DocConfig to run per record. Empty → Pack is required. |
+| **Pack** | Lookup to the Pack to run per record. Empty → DocConfig is required. |
+| **Batch Apex Class** | An Apex class implementing `cadmus_batch.Batch_ICadmusBatch`. See the Academy page's attached PDF for the interface. |
+| **Batch Size** | Records per chunk. Academy says: "A good size is 5", but **must be set to 1** when the DocConfig / Pack itself has Actionables (SFDC governor limits). The Run Actionables Academy page explicitly uses Batch Size = 20 in an example with Batch-Info-level Run Actionables — so the size-1 constraint applies to **DocConfig/Pack-level** Actionables only, not to Run Actionables. |
+| **Delivery Option** | Determines how the generated document is saved related to the record. Valid values (verbatim): `ATTACHMENTS`, `ATTACHMENTS_OVERWRITE`, `FILES`, `FILES_OVERWRITE`, `FILES_ADD_VERSION`, `BASE64`, `Use DocConfig Setting`. (`Use DocConfig Setting` requires Batch Size = 1.) |
+| **Alternative API Field** | API name of a field on the SOQL's root SObject whose value is used as the Alternative per record. **Must be directly on the SObject** — cannot be a lookup-traversed field. |
+| **Locale API Field** | Same shape — field on the root SObject providing the per-record locale. |
+| **Currency Locale API Field** | Field on the root SObject providing the per-record currency/locale. |
+| **Target Type** | `PDF` (default) or `DOCX` — same semantics as `ConvertController.ConvertDataModel.targetType` on the PDF Butler side. |
 
-**Key design choice**: put Actionables on the **Batch Info**, not on the DocConfig/Pack. Reason: a batch of 1000 records with a Pack-level Actionable forces Batch Size = 1, which is slow. A Batch Info–level Actionable runs once per doc and keeps Batch Size at 5–10.
+**Non-prod limit (verbatim from the Academy)**: "On non-PROD Orgs, a batch can maximum run 25 records. Make sure to use the "LIMIT" keyword in your SOQL and Count SOQL".
+
+**Key design choice**: put Actionables on the **Batch Info** as **Run Actionables** (via the `Run From Batch Info` lookup — see below), not on the DocConfig/Pack itself. Reason: when the DocConfig/Pack has its own Actionables, BULK Butler forces Batch Size = 1 to stay within governor limits. Run Actionables on the Batch Info run once per successful doc without the size-1 penalty, so Batch Size can stay at 5–20.
+
+_Source: [BULK Butler – Initial Setup](https://www.pdfbutler.com/academy/bulk-butler-academy/bulk-butler/bulk-butler-initial-setup/)._
 
 ## Launching a batch
 
@@ -91,6 +100,8 @@ Invocable action surfaces on both overloads of `startBatch`. Typical pattern:
 - `Launch Batch` invocable action → fires BULK Butler
 - Flow variables (documented by PDF Butler in linked video tutorials) cover: `batchInfoId` input, and ID-list pass-through for batches driven by a Lightning Convert Component record-selection step
 
+_The full Flow Introduced Variables inventory is a [video-only Academy page](https://www.pdfbutler.com/academy/bulk-butler-academy/bulk-butler/bulk-butler-flow-introduced-variables-2/) — confirm the exact variable set in-org (build a Screen Flow referencing the Launch Batch invocable and inspect the input/output variables surfaced by the Flow Builder)._
+
 ### `Batch_ProcessController` — full API
 
 | Method | Signature |
@@ -101,6 +112,8 @@ Invocable action surfaces on both overloads of `startBatch`. Typical pattern:
 
 All three are void — BULK Butler runs async, so status comes via the email notification list and/or Run Actionables. Don't expect a sync return value.
 
+_The [Launch batch from APEX Academy page](https://www.pdfbutler.com/academy/bulk-butler-academy/bulk-butler/bulk-butler-launch-batch-from-apex-2/) is video-only — these signatures are sourced from the `cadmusbatch` API reference at [eu1.pdfbutler.com/files/api/cadmusbatch/](https://eu1.pdfbutler.com/files/api/cadmusbatch/)._
+
 ---
 
 ## Run Actionables per record
@@ -108,56 +121,109 @@ All three are void — BULK Butler runs async, so status comes via the email not
 **Purpose**: fire side-effects (email the doc, update the record, call a Flow, sign via SIGN Butler) once per successfully generated document, without collapsing Batch Size to 1.
 
 **Setup**:
-1. Add the **"Run From Batch Info"** lookup field to the target Actionable record type's Page Layout.
+1. Add the **`Run From Batch Info`** lookup field to the target Actionable record type's Page Layout. (Field name is verbatim — the lookup on the Actionable record points back to a Batch Info.)
 2. Create an Actionable record referencing the Batch Info via that lookup.
-3. Multiple Run Actionables execute **in alphabetical order by Name** — use naming conventions like `10_UpdateRecord`, `20_SendEmail` to control order.
+3. Multiple Run Actionables execute **ordered by Name**. Use naming conventions like `10_UpdateRecord`, `20_SendEmail` to control execution order.
 
-**Flow Actionable requirement**: the target Flow must declare an **INPUT variable named `batchInfoId`** (Text). BULK Butler passes the Batch Info Id so the Flow knows which run it's operating within. If your Flow also needs per-record context, the post-generation hooks from PDF Butler still apply — see `AfterActionableFlow_Info` in the sf-pdf-butler skill.
+**Flow Actionable requirement**: the target Flow must declare an **INPUT variable named `batchInfoId`** (Text). BULK Butler passes the Batch Info Id so the Flow knows which run it's operating within. Academy verbatim: "The Batch Info Id parameter will also be passed on to the flow." If your Flow also needs per-record context, the post-generation hooks from PDF Butler still apply — see `AfterActionableFlow_Info` in the sf-pdf-butler skill.
 
-**Performance rule**: Run Actionables per record (via Batch Info) are far cheaper than DocConfig/Pack-level Actionables in a batch, because Batch Size can stay at 5–10.
+**Performance rule**: the Academy example uses **Batch Size 20** with a "Run Flow" Run Actionable — so Run Actionables do NOT force Batch Size = 1. The size-1 rule applies only when the DocConfig/Pack itself carries an Actionable. "An optimal Batch Size is mostly 5 or 10."
+
+_Source: [BULK Butler – Run Actionables for each record](https://www.pdfbutler.com/academy/bulk-butler-academy/bulk-butler/bulk-butler-launch-actionables-for-each-document-2/) (video + prose)._
 
 ---
 
 ## Report-driven batches
 
-For admin-friendly "run this DocConfig for every row in a report" workflows. Provided pattern:
+For admin-friendly "run this DocConfig for every row in a report" workflows. The Academy publishes full code samples.
 
 **Components**:
-1. **Salesforce Report** (**tabular**, like PDF Butler's Report DataSource) with **Record Id as the first column**
-2. **Batch Info record** with Delivery Option = `BASE64`
-3. **Apex class `GetReportRecordsAndLaunchBatch`** — invocable, reads the report, passes `recordIds` into SOQL/Count SOQL variables
-4. **Screen Flow** prompting for Report Name → calls the invocable
-5. **Button** on the Batch Info object triggering the Screen Flow
+1. **Salesforce Report** (tabular). Academy verbatim: "Make sure to add Opportunity Id in the first column, so that Apex class can recognize all the Ids for which Bulk Butler want to generate the document." First column MUST be the record Id.
+2. **Batch Info record** with `Delivery Option = BASE64` (required when saving to SharePoint).
+3. **Apex class** `GetReportRecordsAndLaunchBatch` (verbatim) — exposes an `@InvocableMethod` with `label='Call Bulk Butler Batch Class'` and an inner wrapper class `flowinputs` carrying `@InvocableVariable(label='Batch Info Id') public String batchInfoId;` and `@InvocableVariable(label='Report Name') public String reportName;`. Test class: `GetReportRecordsAndLaunchBatchTest` (`@isTest(SeeAllData=true)`).
+4. **Screen Flow** prompting for Report Name → calls the invocable.
+5. **Button** on the Batch Info object triggering the Screen Flow.
 
-**Constraint**: report **first column MUST be the Id** — the Apex class literally reads column index 0 as the record Id.
+**The Reports API calls** inside `GetReportRecordsAndLaunchBatch` (verbatim from Academy):
+
+```apex
+Report rep = [SELECT Id FROM Report
+              WHERE DeveloperName = :reportApiName OR Name = :reportApiName];
+Reports.reportResults results = Reports.ReportManager.runReport(rep.Id, true);
+Reports.ReportMetadata rm     = results.getReportMetadata();
+String factMapKey = 'T!T';
+Reports.ReportFactWithDetails factDetails =
+    (Reports.ReportFactWithDetails) results.getFactMap().get(factMapKey);
+for (Reports.ReportDetailRow detailRow : factDetails.getRows()) {
+    Reports.ReportDataCell cell = detailRow.getDataCells()[0];
+    recordIds.add(cell.getLabel());
+}
+Map<String, Object> inputMap = new Map<String, Object>();
+inputMap.put('recordIds', recordIds);
+if (!Test.isRunningTest()) {
+    cadmus_batch.Batch_ProcessController.startBatch(batchInfoId, inputMap);
+}
+```
+
+Academy verbatim: "The Apex class passes the `recordIds` variable to the SOQL and Count SOQL fields."
 
 ### SharePoint delivery (optional)
 
-Add a Run Actionable that calls **`cadmus_una.Actionable_CollabStoreFile`** (from Collaboration Butler). It pushes each generated doc into a SharePoint library + folder. Requires Collaboration Butler fully configured — see SharePoint section in sf-pdf-butler skill.
+Add a Run Actionable with Record Type `Upload To SharePoint` that calls **`cadmus_una.Actionable_CollabStoreFile`** (from Collaboration Butler). It pushes each generated doc into a SharePoint library + folder. Requires Collaboration Butler fully configured — see SharePoint section in sf-pdf-butler skill.
+
+_Source: [Bulk Document Creation from a Salesforce Report](https://www.pdfbutler.com/academy/bulk-butler-academy/bulk-butler/bulk-butler-bulk-doc-creation-from-a-salesforce-report-with-optional-saving-to-sharepoint-folder/)._
 
 ---
 
 ## Batch Backend (high-throughput add-on)
 
-Separately licensed. Use when batches exceed ~50 documents.
+Separately licensed. Academy verbatim: "In general, any batch bigger then 50 documents should be done via Batch Backend." [sic — "bigger then"]
 
-**What it adds**:
-- **Much faster processing** + better scalability
-- **Better error handling** than the standard Salesforce batch Apex path
-- **Merged PDF output** — all docs concatenated into one file
-- **ZIP output** — all docs zipped into one archive
+**What it adds** (verbatim):
 
-**Opt-in steps**:
-1. **BULK Butler Admin tab** → enter PDF Butler credentials
-2. **Accept addendum** (additional licence terms)
-3. **Contact PDF Butler Support** to confirm licensing eligibility
-4. **Assign `PDF Butler Batch` permission set** to batch-running users
+- "Much faster processing"
+- "more scalable"
+- "better error handling"
+- "can generate a merged PDF or ZIP file"
+- "Is the future of Batch processing in PDF Butler so main innovations will come to this platform"
 
-**Limits**:
-- Merged PDF — **1,000 records per file max**; larger batches split into multiple merged PDFs
-- ZIP — same 1,000-record cap per archive
+**Opt-in steps** (Academy, in order):
 
-**When to use**: any batch over 50 docs. The default Salesforce-native batch path has worse error handling and slower throughput.
+1. **BULK Butler Admin tab** → "Enter the PDF Butler Username and password"
+2. "Check the Addendum agreement and register" (single checkbox + register button — not a separate acceptance step)
+3. "Contact PDF Butler Support to make sure you have the License for BULK generation via Batch Backend"
+4. Assign Permission Set **`PDF Butler Batch`** to each User that requires to use the batch
+
+**Batch Info config for Batch Backend** — create a Batch Info with **`RecordType = "Batch Backend"`** (verbatim). Fields on this record type:
+
+| Field | Value / note |
+|---|---|
+| `Cron` | Schedule your jobs weekly, monthly, … |
+| `SOQL` | SOQL that selects the records to process |
+| `Count SOQL` | Same SOQL but with `Count()` only. Row count must equal the SOQL row count — WHERE/LIMIT clauses must match. |
+| `DocConfig` / `Pack` | Documents to generate. **AFTER Actionables on the DocConfig/Pack will be IGNORED**; only BEFORE and BEFORE_BUT_AFTER_DATASOURCES Actionables are respected in Batch Backend. |
+| `BatchSize` | Academy: "set to 100" |
+| `Delivery Type` | **(distinct from `Delivery Option` on standard Batch Info)**. `BASE64` (don't save to record) or `FILES` (don't save — Academy phrasing is ambiguous/typo; verify in-org). |
+| `Alternative / Locale / Currency Locale API fields` | Field on the record that sets per-record values. Cannot be a field through a Lookup. **Must be added to the SOQL.** |
+
+**Merging / zipping — Record Type `Batch Backend Action`** (optional AFTER Actionable on the Batch Info):
+
+| Field | Purpose |
+|---|---|
+| `Backend Batch Action` | `MERGED_PDF` — merge all PDFs into one file; `ZIP_FILE` — zip all PDFs. |
+| `Active` | Must be checked or the Actionable is ignored. |
+| `No Unique Id Per File` | If checked, you must guarantee each PDF has a unique name via the DocConfig Title — else same-name files overwrite. Unchecked = BULK Butler appends a unique Id to each filename. |
+| `Batch Backend Upload Action` | Optional — for storing merged PDFs / ZIPs in SharePoint. Uses `cadmus_una.Actionable_GetUploadSession` (Collaboration Butler). Leave empty to store in Salesforce Files linked to the Batch Run record. **Only SharePoint via Collaboration Butler is supported** at time of Academy writing. |
+
+**Standard AFTER Actionables** (PDF Butler / SIGN Butler / COLLABORATION Butler / custom): "Just create the Actionable on the BatchInfo as you would normally do on a DocConfig or Pack."
+
+**Limits (verbatim)**:
+
+- Merged PDF: "If more then 1000 records, each merged PDF will have max 1000 records and there will be multiple merged PDFs" [sic — "then"]
+- ZIP: same 1000-record cap per archive.
+- Non-PROD orgs: batch maximum 25 records (applies to the standard path too — use `LIMIT` in SOQL + Count SOQL).
+
+_Source: [Batch Backend – Faster processing, More Options](https://www.pdfbutler.com/academy/bulk-butler-academy/bulk-butler/batch-backend-faster-processing-more-options/)._
 
 ---
 

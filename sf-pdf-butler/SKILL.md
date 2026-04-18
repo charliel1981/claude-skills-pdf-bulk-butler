@@ -3,21 +3,29 @@ name: sf-pdf-butler
 description: >
   Salesforce PDF generation with the PDF Butler AppExchange package (namespace
   `cadmus_core`). Use when building, invoking, or troubleshooting DocConfigs,
-  Packs, Actionables, the Apex Convert API, Flow actions for DOCX→PDF,
-  DataSources (SINGLE, LIST, KEYVALUE, Report, Full SOQL Power, etc.),
-  ConfigTypes (Table, Criteria, Picture, Conditional Sections, etc.), DocConfig
-  output types (Word/PDF, Excel, PowerPoint, CSV, PDF Form Filler, Static PDF,
-  Table Column Remover, Email, Template Word), Lightning components (Convertor,
-  Previewer, Inline Edit), CPQ/FSL/Peppol/Service Cloud/Experience Cloud
-  integrations, deployment via Migration Wizard or SF CLI, multi-language/
-  multi-locale output, and the heap-size-safe "Handle Files Via API" pattern.
+  Packs, Actionables, the Apex Convert API (`ConvertController`,
+  `DocumentDataHandler`, `PdfActions` for page numbers/title/watermark,
+  `MetadataWrapper` for runtime stage/locale/Agentforce detection,
+  `CadmusParameters` typed variables, `PdfButlerCallable` cross-package
+  dispatch, `CadmusHttpCalloutMock` for unit tests), Flow actions for
+  DOCX→PDF, DataSources (SINGLE, LIST, KEYVALUE, Report, Full SOQL Power,
+  etc.), ConfigTypes (Table, Criteria, Picture, Conditional Sections, etc.),
+  DocConfig output types (Word/PDF, Excel, PowerPoint, CSV, PDF Form Filler,
+  Static PDF, Table Column Remover, Email, Template Word), Lightning
+  components (Convertor, Previewer, Inline Edit), CPQ/FSL/Peppol/Service
+  Cloud/Experience Cloud integrations, deployment via Migration Wizard or
+  the `@pdfbutler/migration-cli` sf CLI plugin (10 commands: DocConfig/Pack/
+  DataSource/SignTemplate export/import, adminsettings, admincredentials),
+  multi-language/ multi-locale output, and the heap-size-safe "Handle Files
+  Via API" pattern.
 license: MIT
 metadata:
-  version: "0.3.0"
+  version: "0.5.0"
   author: "Charlie Lang"
   sources:
     - "https://www.pdfbutler.com/academy/pdf-butler-academy/"
     - "https://eu1.pdfbutler.com/files/api/cadmuscore/"
+    - "https://www.npmjs.com/package/@pdfbutler/migration-cli"
 ---
 
 # PDF Butler skill
@@ -67,7 +75,7 @@ Based on the user's task, read the matching file. They're all under `reference/`
 | User task / intent | Open |
 |---|---|
 | Picking the DocConfig **output type** (Main Word PDF, Template Word, Excel, Static PDF, Table Column Remover, Email, PDF Form Filler, CSV, PPTX) | [reference/doc-config-types.md](reference/doc-config-types.md) |
-| Writing Apex that calls PDF Butler (any method on ConvertController / DocumentDataHandler), Actionable interfaces, LWC/Aura examples, Flow invocables, REST, Permission Set Groups | [reference/automation.md](reference/automation.md) |
+| Writing Apex that calls PDF Butler (`ConvertController`, `DocumentDataHandler`, `PdfActions`, `MetadataWrapper`, `CadmusParameters`, Abstract* interfaces), **unit testing with `CadmusHttpCalloutMock`**, **cross-package `PdfButlerCallable` dispatch**, LWC/Aura examples, Flow invocable wrappers, REST URL map, Permission Set Groups | [reference/automation.md](reference/automation.md) |
 | Building or debugging a Pack, wiring an Actionable (email, SIGN, DocuSign, AdobeSign, Run Apex, Thumbnail, Image-by-URL, Chart), Flow action DOCX→PDF | [reference/packs-actionables.md](reference/packs-actionables.md) |
 | Choosing or editing a ConfigType (Single, Table, Paragraph, Criteria, Picture, Form_Checkbox, Color_Cell, Document_V3, etc.) | [reference/configtypes.md](reference/configtypes.md) |
 | Choosing or editing a DataSource (Single, List, SOQL Builder, Full SOQL Power, Picture, KeyValue, Report, Nested, Late Binding, Picklist Translations) | [reference/datasources.md](reference/datasources.md) |
@@ -75,7 +83,7 @@ Based on the user's task, read the matching file. They're all under `reference/`
 | Template cookbook: checkboxes, watermarks, auto-numbering, PDF/A, approval history, multiselect picklists, conditional formatting, track changes, embedded fonts, dynamic passwords, etc. | [reference/tips.md](reference/tips.md) |
 | Multi-language / multi-brand / multi-currency output, Alternatives, locale formatting, picklist translations, CPQ product translations | [reference/i18n.md](reference/i18n.md) |
 | Salesforce CPQ, Field Service (FSL), Peppol invoicing, **Service Cloud / Knowledge case articles, Experience Cloud (Community) setup** | [reference/integrations.md](reference/integrations.md) |
-| Moving DocConfigs between orgs (Migration Wizard, SF CLI `@pdfbutler/migration-cli`, Backup/Restore, Stage mapping) | [reference/deployment.md](reference/deployment.md) |
+| Moving DocConfigs / Packs / DataSources / SIGN Butler templates between orgs (Migration Wizard UI; `@pdfbutler/migration-cli` sf-plugin with all 10 commands, both auth modes, REST-endpoint map, CI/CD session auth, new-org bootstrap; Backup/Restore; Stage mapping) | [reference/deployment.md](reference/deployment.md) |
 | Error messages / FAQs / licensing / scratch orgs / S3 storage / template best practices / Get Started walkthrough | [reference/faq.md](reference/faq.md) |
 
 Don't dump reference content — only read the file you need. If a user's question spans two areas, read both files before answering.

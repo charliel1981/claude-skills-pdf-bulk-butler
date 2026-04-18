@@ -69,15 +69,19 @@ Cookbook of template-authoring recipes. Claude reads this when a user asks "how 
 
 ### Home Page Component
 
+_Video-only Academy page; details above are the high-level pattern; see [Home Page Component](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-tips-tricks/home-page-component/)._
+
 **Purpose**: trigger generation from the Salesforce Home page (not tied to a specific record).
 **Use for**: sales home page "Generate Opportunity Overview" buttons, weekly summary reports.
 **Placement**: Home Lightning App Page in App Builder.
 
 ### PDF/A output
 
-**Standard compliance**: PDF/A-1a (full conformance) + PDF/A-1b (subset).
+**Standard compliance** (Academy verbatim): "we targeted for the full conformance level of PDF/A-1a! So this means that we are completely compliant with PDF/A-1a and PDF/A-1b (as this is a subset of PDF/A-1a)."
 **Use for**: archival requirements (ISO 19005-1), long-term retention mandates.
-**How to enable**: DocConfig metadata setting — contact support for exact field in current package version.
+**How to enable**: on a **Main Word Document** DocConfig, tick the `Export PDF as PDF/a` setting (verbatim label from the Main Word PDF Academy page; lowercase `a`). For other DocConfig types, contact support.
+
+_Sources: [PDF/A](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-tips-tricks/pdf-a/) (conceptual), [Main Word PDF](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-by-doc-config/main-word-pdf/) (toggle label)._
 
 ### Approval History
 
@@ -122,19 +126,58 @@ Bind to a `TABLE_ROW` or `PARAGRAPH` in the template.
 ### Usage statistics
 
 **Access**: CSV extract on request (no live dashboard).
-**Covers**: PDF Butler + SIGN Butler + FORM Butler + BULK Butler + Peppol.
-**Key fields**: `CreatedAt`, `Month`, `Stage`, `SalesforceUserId`, `DocSize` (bytes), `GenerationTime` (ms), `DocumentConfigName`, `CustomerDocumentConfigId`, `ExportFormat`, action types (`CONVERT_DOC_CONFIG`, `FP_SUBMIT`, `PEPPOL_V1_INVOICE_INIT`), `RequestPayloadSize`, `UsageType`.
+**Covers** (Academy verbatim): "PDF Butler, SIGN Butler, FORM Butler, BULK Butler, MASS Volume Butler, PEPPOL, …"
 **Workflow**: email `support@pdfbutler.com` for an extract.
+
+**Fields** — the Academy lists exactly these 12:
+
+| Field | Description |
+|---|---|
+| `CreatedAt` | Date and time the request was done |
+| `DocumentConfigName` | Empty unless PDF Butler action — then the DocConfig name |
+| `CustomerDocumentConfigId` | Empty unless PDF Butler action — then the Customer DocConfig Id |
+| `Month` | Month of the extract |
+| `Stage` | Stage the request ran against (`TEST`, `PROD`, etc.) |
+| `SalesforceUserId` | Id of the Salesforce user that started the request |
+| `ActionName` | The action requested (popular values below) |
+| `UsageType` | How the request was initiated |
+| `DocSize` | Size of the document in bytes |
+| `GenerationTime` | Time of the request in milliseconds |
+| `ExportFormat` | e.g. `PDF`, `DOCX` |
+| `RequestPayloadSize` | Size of the request data |
+
+**`ActionName` popular values** (Academy: "Here a few popular ones" — list is **not exhaustive**):
+
+| Value | Meaning |
+|---|---|
+| `MAIN_DOC_CONFIG` | Change made to a DocConfig |
+| `CONVERT_DOC_CONFIG` | Document generated |
+| `FP_SUBMIT` | FORM Butler form submit |
+| `EMAIL_SIGN` | SIGN Butler sign request opened from an email |
+| `SIGN_EMAIL_SIGN` | SIGN Butler stakeholder signed while opening from an email |
+| `DONE_FINISHED` | SIGN Butler — all stakeholders signed |
+| `PEPPOL_V1_INVOICE_INIT` | PEPPOL invoice sent |
+
+**`UsageType` values** (Academy lists only these two):
+
+- `NORMAL_PDFB` — user clicked a button to generate a document
+- `NORMAL_ASYNC` — async request, e.g. via Flow
+
+_Source: [PDF Butler Usage Statistics](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-tips-tricks/pdf-butler-usage-statistics/)._
 
 ### Async delivery
 
-**Three async save modes** (set on `ConvertDataModel.deliveryOverwrite`):
-- `FILES_ASYNC` — async save
-- `FILES_OVERWRITE_ASYNC` — overwrite existing async
-- `FILES_ADD_VERSION_ASYNC` — new ContentVersion async
+**Three async save modes** (set on `ConvertDataModel.deliveryOverwrite`) — enum values verbatim from Academy:
 
-**Async After Actionable**: `AFTER_ASYNC` phase — runs post-generation without blocking.
+- `FILES_ASYNC`
+- `FILES_OVERWRITE_ASYNC`
+- `FILES_ADD_VERSION_ASYNC`
+
+**Async After Actionable**: `AFTER_ASYNC` phase — runs AFTER Actionables async, post-generation without blocking.
+
 **Use for**: batch generations, trigger contexts, anywhere you can't tolerate callout latency in the user's transaction.
+
+_Source: [PDF Butler Async Delivery Option and After Actionables](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-tips-tricks/pdf-butler-async-delivery-option-and-after-actionables/) — the enum values are literally named, but configuration walkthrough is video-only._
 
 ### Butler Inspector
 
@@ -177,22 +220,29 @@ global class DO_NOT_DEPLOY_FlattenPdf implements cadmus_core.AbstractBeforeActio
 ### Dynamic PDF passwords
 
 **Approach**:
-1. Create a **formula field** on the triggering object: `ContactFirstName & ContactLastName & TEXT(DOB)` etc.
-2. Create a DataSource fetching that formula
-3. Enable **password protection** on the DocConfig, map it to the DS field
-4. Generated PDF prompts for password on open
+1. Create a **formula field** on the triggering object returning the desired password string. Academy's verbatim example format: `ContactFirstNameLastName(lowercase)DOB(ddmmyy)`.
+2. Create a DataSource fetching that formula field.
+3. On the DocConfig, enable password protection in the metadata section and map it to the DataSource field (the exact setting label is shown via screenshot only on the Academy page).
+4. Generated PDF prompts for password on open.
 
 **Benefit**: password is per-record, derived from data (no manual entry).
 
+_Source: [Dynamic PDF Passwords](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-tips-tricks/dynamic-pdf-passwords/)._
+
 ### Embedded fonts
 
-**Prerequisite**: account manager must enable font embedding for your tenant.
-**Format requirement**: **`.ttf` TrueType only**.
-**NOT supported**:
-- `.otf` OpenType (convert to TTF first via your font supplier)
-- Variable fonts combining regular/bold/italic in one file
-- TrueType-outline-only fonts
-**Trade-off**: embedded fonts inflate DOCX size — watch Salesforce storage limits.
+**Prerequisite**: "Please contact your PDF Butler Account Manager for this feature to be enabled." (Academy verbatim)
+**Format requirement**: "**PDF Butler only supports .ttf fonts!**" (Academy verbatim)
+
+**NOT supported** (Academy verbatim sentences):
+
+1. **"Fonts of type OTF are NOT supported."** — check with your font supplier on how to convert OTF to TTF.
+2. **"Fonts with variations are not supported."** — variable fonts combining regular, bold, italic, … into one file.
+3. **"Fonts with only 'TrueType Outlines' are not supported"** — on Windows, open the font: the setting must show full TTF not outline-only.
+
+**Trade-off**: embedded fonts inflate DOCX size — watch Salesforce storage limits. Academy: "The DOCX template will be very big with embedded fonts."
+
+_Source: [Use Word Template with Embedded Fonts](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-tips-tricks/generate-word-template-with-embedded-fonts/)._
 
 ---
 

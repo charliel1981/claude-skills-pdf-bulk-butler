@@ -39,17 +39,39 @@ Catalog of every ConfigType. Claude reads this when building/editing DocConfig e
 
 ### `SINGLE`
 
-**Purpose**: 1-on-1 field → merge field replacement.
+**Purpose**: 1-on-1 field → merge field replacement. Academy: "Use the SINGLE to do 1-on-1 replacements from SFDC Data into the document."
 **Field type options**: `TEXT`, `PERCENT`, `PHONE`, `CURRENCY`, `NUMBER`, `DATE`, `DATETIME`, `TIME`.
-**Formatting options**:
-- **Translate** (picklist → translation DS)
-- **Strip tags** (removes HTML)
-- Case transforms: uppercase, lowercase, capitalise-first, etc.
-- Custom format masks for numbers/dates
-- Number-to-Roman: **negatives → positive**, decimals truncated, must be < 4000
-- Number-to-words (spelled-out)
-- `PHONE` / `CURRENCY` formatting depends on `locale` on ConvertDataModel
+
+**TEXT formatting**:
+- `Translate` — picklist → Translation DataSource (refer Picklist Translation DataSource)
+- `Strip tags` — "Check this checkbox if the input contains HTML tags or enters and you do not want these to show"
+- `Text Formatting` — "Different types of formatting were provided to choose here. More Information at: SINGLE ConfigType Text Formatting" (that sub-page is video-only)
+
+**PERCENT and NUMBER formatting** (same option set):
+
+| Option | Behaviour |
+|---|---|
+| `Custom format` | "Format by international formatting rules." Examples from Academy: `###,##0.00` → "1000-separator, always 1 number in front of the decimal sign and 2 numbers after"; `###,##0` → "1000-separator and always 1 number in front of the decimal sign but no decimals". |
+| `Spelled Out (in letters)` | "This option will show Numbers in letters" — Example: `510` → `five hundred ten` |
+| `Spelled Out (in letters) and Capitalize` | "This option will Capitalize all the words" — Example: `510` → `Five Hundred Ten` |
+| `Spelled Out (in letters) and Capitalize first word only` | "This option will Capitalize the first word only" — Example: `510` → `Five hundred ten` |
+| `Roman numeral` | "can be placed in both uppercase and lowercase." Constraints (verbatim): "negative numbers will be converted into positive numbers"; "decimal numbers will cut off at the decimal sign. So we only allow integer numbers"; "the number must be smaller the 4000. So the biggest possible number is 3999". |
+
+**DATE / DATETIME / TIME formatting**:
+
+| Field type | Example custom format |
+|---|---|
+| `DATE` | `dd-MMM-yy` |
+| `DATETIME` | `dd/MM/yy HH:mm:ss` |
+| `TIME` | `HH:mm:ss` |
+
+"Construct your own format (always dependent on locale (country and language))."
+
+**PHONE** and **CURRENCY**: "You can choose no formatting or format depending on the locale supplied when generating." PHONE's `INTERNATIONAL` / `NATIONAL` enum labels are documented on the separate "Phone number formatting" Academy page (see `reference/i18n.md`), not on the SINGLE page itself.
+
 **Gotchas**: if a TEXT field contains HTML, enable Strip tags or raw markup appears in output.
+
+_Sources: [SINGLE](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-by-configtype/single/), [SINGLE ConfigType Text Formatting](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-by-configtype/single-configtype-text-formatting/) (video-only)._
 
 ### `TITLE`
 
@@ -123,7 +145,7 @@ Catalog of every ConfigType. Claude reads this when building/editing DocConfig e
 ### `CRITERIA`
 
 **Purpose**: conditional logic on other ConfigTypes (`TABLE_ROW`, `PARAGRAPH`, `TABLE`, `CONDITIONAL_SECTIONS`).
-**Operators**: `=`, `<>` (and likely `>`, `<`, `>=`, `<=` based on quantity examples).
+**Operators**: `=` and `<>` are the only operators the [CRITERIA Academy page](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-by-configtype/criteria/) shows explicitly. Numeric comparators (`>`, `<`, `>=`, `<=`) are not documented there — verify in-org against the `cadmus_core__Criteria_Operator__c` picklist before relying on them.
 **Composition**: AND/OR supported.
 **Examples**:
 - `Product2.Family='Hardware'` — only hardware rows
@@ -136,7 +158,7 @@ Catalog of every ConfigType. Claude reads this when building/editing DocConfig e
 Applied on `SINGLE` ConfigTypes to choose between multiple fields/static fallbacks:
 - **Fallback chain**: evaluate fields in order, show first non-empty
 - **Spacing toggles**: "Add space before/after when value present"
-- **Comparisons**: `>1`, etc. — supported but not formally documented
+- **Comparisons**: numeric operators (`>1`, etc.) are not listed on the Academy — verify in-org before using
 
 ### `CONDITIONAL_SECTIONS`
 
@@ -151,11 +173,18 @@ Applied on `SINGLE` ConfigTypes to choose between multiple fields/static fallbac
 
 **Image sources**: Salesforce records, PICTURE LIST DataSource, Blob/Attachment, URL.
 **Required**: placeholder in Word template, matching ConfigType, backing DataSource.
-**Sizing modes**:
-- `NONE` — stretches to placeholder exact W×H
-- `BY WIDTH` — keeps width, auto-height
-- `BY HEIGHT` — keeps height, auto-width
-- `CONTAIN` — fits inside placeholder, preserves aspect ratio
+**Sizing modes** (Academy verbatim — "There are 4 ways to scale an image"):
+
+| Mode | Behaviour (verbatim) |
+|---|---|
+| `NONE` | "The system will stretch or squeeze the image to make it fit the placeholder while keeping the placeholder's exact height and width." |
+| `BY WIDTH` | "The system will keep the width of the placeholder to fit the image and automatically recalculate the height." |
+| `BY HEIGHT` | "The system will keep the height of the placeholder to fit the image and automatically recalculate the width." |
+| `CONTAIN` | "The system will always contain the image within the placeholder, as in the 'NONE' option, but it will adjust either the height or the width to ensure the image scales correctly." |
+
+No `COVER` or `FIT` mode is listed on the Academy page.
+
+_Source: [PICTURE](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-by-configtype/picture/)._
 
 ### `PICTURE_TO_URL`
 
@@ -184,10 +213,29 @@ Applied on `SINGLE` ConfigTypes to choose between multiple fields/static fallbac
 
 ### `DOCUMENT_V3`
 
-**Purpose**: dynamically include TEMPLATE DocConfigs based on a DataSource (replaces deprecated `DOCUMENT_V2`).
-**Required**: DataSource field referencing a Customer DocConfig Id (uses `cadmus_core__CustomerDocumentConfigId__c`).
-**Separator options**: Double spacing / Single spacing / Page break / None / Section break.
-**Gotcha**: with Section break separator, the merge field must NOT occupy its own section, or you get empty pages.
+**Purpose**: dynamically include TEMPLATE DocConfigs based on a DataSource. Academy verbatim: "REMARK: make sure to use DOCUMENT_V3 instead of DOCUMENT_V2".
+
+**How it works** (verbatim): "The DOCUMENT_V3 ConfigType will loop over all records in the DataSource and retrieve each TEMPLATE to import it into the resulting document."
+
+**Required**: a DataSource field containing the **Customer DocConfig Id** (not the Salesforce Id). Recommended pattern: "create a Lookup to a DocConfig in Salesforce and via the Lookup use the field `cadmus_core__CustomerDocumentConfigId__c` as this field has the Customer DocConfig Id that is required in this ConfigType."
+
+**Header/footer**: "By default, the header and footer of the MAIN DocConfig are used for the inserted TEMPLATES."
+
+**Separator options** (verbatim):
+
+| Option | Behaviour |
+|---|---|
+| `Double spacing` | "this looks like 2 enters are added between the TEMPLATES" |
+| `Single spacing` | "this looks like 1 enter is added between the TEMPLATES" |
+| `Page break` | "each TEMPLATE is added to a new page" |
+| `None` | "directly add the TEMPLATES after each other" |
+| `Section break` | "This is a special case!" — uses the header/footer from each TEMPLATE (a Section Break is added between TEMPLATES, and also after the last one unless no TEMPLATES loaded). |
+
+**Empty-DataSource edge case** (verbatim): "After the last TEMPLATE, there will be no separator added. Also where there are no TEMPLATES to load (empty DataSource or all TEMPLATES are filtered out by the Criteria Logic), no separator is added (There is an exception for 'Section break')".
+
+**Section break gotcha** (verbatim): "As there is an Section Break added for each TEMPLATE, even the last one, make sure the mergefield for this ConfigType is not in a separate Section! If this is in a separate section, there will be an empty section in the generated document and this can be an empty page."
+
+_Source: [DOCUMENT_V3](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-by-configtype/document_v2/) (URL slug is `document_v2` but page title reads DOCUMENT_V3)._
 
 ### `DOCUMENT_V2`
 
@@ -195,9 +243,9 @@ Deprecated — use `DOCUMENT_V3`.
 
 ### `SINGLE_FOR_FORMULA`
 
-**Purpose**: perform calculations (sum, avg, etc.) without adding a Salesforce formula field.
-**Use when**: quick math on DataSource values that you don't want to persist as a real field.
-**Docs status**: stub on Academy — consult support for full formula syntax.
+_Video-only Academy page. Full Academy prose: "Need calculations, summations, averages, … and you do not want to add Formula fields in Salesforce. Use the SINGLE_FOR_FORMULA". See [SINGLE_FOR_FORMULA](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-by-configtype/single_for_formula/)._
+
+**Purpose**: perform calculations (sum, avg, etc.) without adding a Salesforce formula field — exact formula syntax is shown via video only. Consult support or inspect existing configs in-org for the concrete expression grammar.
 
 ### `CONTENT_CONTROLLER`
 

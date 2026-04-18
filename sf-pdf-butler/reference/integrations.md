@@ -19,21 +19,25 @@ PDF Butler is "designed from the ground up to handle [CPQ] and to convert your b
 ### Multi-level CPQ products
 
 **Pattern**: 3-tier hierarchy (primary product → bundle children → sub-components).
-**Approach**: nested LIST DataSources — parent query on `SBQQ__QuoteLine__c WHERE SBQQ__RequiredBy__c = null`, child queries on `SBQQ__QuoteLine__c WHERE SBQQ__RequiredBy__c = :parent_line_id`.
+**Approach**: nested LIST DataSources on `SBQQ__QuoteLine__c` — parent filters to top-level lines, child queries filter to each bundle's children.
 **UI mirror**: the goal is to mirror the "Edit Lines" view in CPQ inside the generated PDF — admins often use this as the acceptance test.
 **Visual elements**: product logos tie into `PICTURE` ConfigType with per-product image DataSources.
+
+The specific CPQ field names used to distinguish parent lines from bundle children (`SBQQ__RequiredBy__c`, `SBQQ__Group__c`, `SBQQ__Number__c`, etc.) are **not** published in the Academy prose — they're CPQ-package conventions. Verify each against the CPQ schema in your target org (`sf sobject describe -o <alias> SBQQ__QuoteLine__c`) or inspect the downloadable `DEMO_CPQ_Grouped_Lines.docx` which ships with the Academy page.
 
 ### CPQ Groups
 
 **Use case**: split line items by group (Services vs Hardware vs Licences) with headers.
-**Approach**: LIST DataSource on `SBQQ__QuoteLineGroup__c` as parent → filtered child LIST on `SBQQ__QuoteLine__c WHERE SBQQ__Group__c = :groupId`.
-**Demo asset**: Academy ships `DEMO_CPQ_Grouped_Lines.docx` — request it for a starter template.
+**Approach**: LIST DataSource on `SBQQ__QuoteLineGroup__c` as parent → filtered child LIST on `SBQQ__QuoteLine__c`. Academy verbatim: "Using groups in your 'Edit Lines' is very powerful. To use these groups to build a better structure and overview in your quote is even more powerful."
+**Demo asset**: Academy ships `DEMO_CPQ_Grouped_Lines.docx` — downloadable directly from the Using CPQ Groups page.
 
 ### CPQ gotchas
 
-- Line ordering driven by `SBQQ__Number__c`, not created date
-- Bundle options hide under `SBQQ__RequiredBy__c` — always filter top-level vs child in parent queries
+- Line ordering — CPQ typically uses a sort-order field; verify the exact API name in your org
+- Bundle options hide under a "required-by" relationship — verify the exact SBQQ field name in your org
 - Price fields come in multiple currencies if multi-currency enabled — use `locale` / `numCurrLocale` on `ConvertDataModel` to format correctly
+
+_Sources: [CPQ – Introduction](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-for-salesforce-cpq/cpq-introduction/), [Multi-level CPQ products](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-for-salesforce-cpq/multi-level-cpq-products/), [Using CPQ Groups](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-for-salesforce-cpq/using-cpq-groups/) (video-only on the last — downloadable DOCX provides the concrete pattern)._
 
 ---
 
@@ -99,34 +103,59 @@ PDF Butler is "designed from the ground up to handle [CPQ] and to convert your b
 ### Authentication
 
 - Credentials issued by PDF Butler during registration (same tenant credentials)
-- Paste into Peppol Admin tab → **Check Credentials** verification step
+- Paste into Peppol Admin tab → **Check Credentials** (verbatim button label)
 - Sandbox install: append `/test` instead of `/login` in package-install URL
+- Permission Set to assign to Peppol administrators: **`PEPPOL Butler Admin`** (verbatim)
 
-### Required Account fields
+### Custom objects + namespace
 
-| Field | Purpose |
-|---|---|
-| `CustomerPeppolId__c` | Customer's Peppol participant ID |
-| Billing Street / City / PostalCode / Country | Standard Salesforce address fields used in UBL XML |
+Installed under `cadmus_peppol` namespace. Key objects (verbatim):
 
-**Peppol ID format**: ISO 6523 → `<Scheme ID>:<Participant ID>`, e.g. `9915:test-sender` (test), `0106:12345678` (Belgian VAT producer).
+- `cadmus_peppol__PeppolSalesInvoice__c` (label: "Peppol Sales Invoice")
+- `cadmus_peppol__PeppolLog__c` (label: "Peppol Log")
+
+### Peppol participant IDs — ISO 6523
+
+Format `<Scheme ID>:<Participant ID>`. Examples verbatim from the Academy:
+
+- `9915:test-sender` (Test Network)
+- `0208:0793904121`
+- `0088:987654321`
 
 ### Apex integration
 
-- **Flow-invocable class**: `cadmus_peppol__Peppol_ServiceFlow` — send invoice via Flow
-- **Logging**: configurable from Peppol Admin tab for debugging outbound requests
+Classes verbatim (Peppol Setup & Configuration Guide):
+
+- `cadmus_peppol.Peppol_ProcessInvoice` — top-level processor
+- `cadmus_peppol__Peppol_ServiceFlow` — Flow-invocable; send invoice via Flow
+- `cadmus_peppol__Peppol_Invoice` — invoice entity
+
+Wrapper Apex types on the page: `Peppol_Invoice`, `Peppol_InvoiceSupplier`, `Peppol_InvoiceCustomer`, `Peppol_InvoiceDelivery`, `Peppol_InvoiceLine`, `Peppol_InvoiceVatTotals`, `Peppol_InvoicePaymentMethod`, `Peppol_InvoiceAttachment`, `Peppol_InvoiceExtraIdentifier`, `Peppol_AdditionalProperty`.
+
+Required invoice fields (verbatim): `INVOICE_NUMBER`, `INVOICE_ISSUE_DATE` (format `YYYY-MM-DD`), `INVOICE_TOTAL_EXCL_VAT`, `INVOICE_TOTAL_INCL_VAT`, `INVOICE_TOTAL_VAT`, `DEFAULT_CURRENCY` (default `EUR`), `SENDER_PEPPOL_ID`, `SENDER_NAME`, `SENDER_VAT`, `SENDER_COUNTRY`, `RECIPIENT_PEPPOL_ID`, `RECIPIENT_NAME`, `RECIPIENT_COUNTRY`.
+
+**Logging**: configurable from Peppol Admin tab with buttons `Switch On Logging (for 1 hour only)` / `Extend Logging` / `Remove logging`.
+
+### Invoice status → HTTP code mapping
+
+| Status | HTTP code |
+|---|---|
+| `Created` | `201` |
+| `Processed` | `202` |
+| `Error` | `500` |
+| `Error already sent` | `409` |
+| `Error not on Peppol` | `422` |
 
 ### Test → Production promotion
 
-By default, the package registers on **Peppol Test Network** — invoices have no legal value there.
+Academy verbatim: "the PDF Butler username is automatically connected to the **Peppol Test Network**." Test invoices carry "no legal value or commitment."
 
 **Promotion steps**:
-1. Migrate config to PROD org
-2. Email `support@pdfbutler.com` / call `+32 3361 35 30` requesting network promotion
-3. Support confirms → you're on the live Peppol network
-4. Only then do invoices have legal standing
 
-**Gotcha**: your username stays on Test Network until support manually flips it — don't assume PROD env alone does it.
+1. Go live by requesting the PDF Butler **Support team** to connect your user to the **Peppol Production Network**
+2. Even after moving to a production org, the account "will remain connected to the Test Network by default" — your username stays on Test Network until support manually flips it
+
+_Sources: [Peppol Invoicing for Salesforce: Setup & Configuration Guide](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-peppol-integration/peppol-invoicing-for-salesforce-setup-configuration-guide/), [How to get promoted from the Test Network to the Peppol Network](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-peppol-integration/how-to-get-promoted-from-the-test-network-to-the-peppol-network/)._
 
 ---
 
@@ -195,4 +224,20 @@ Orthogonal to the `reference/i18n.md` multi-currency content — both pages over
 
 ---
 
-_Sources: Academy sections [for CPQ](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-for-salesforce-cpq/), [for FSL](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-for-salesforce-field-service-lighting-fsl/), [Peppol](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-peppol-integration/), [by Salesforce Product](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-by-salesforce-product/)._
+---
+
+## Failure modes
+
+| Symptom | Root cause | Fix |
+|---|---|---|
+| CPQ quote renders flat list, not nested bundles | Parent query didn't filter to top-level lines; children picked up both | Split into parent + child LIST DataSources with the appropriate "required-by" filter (verify field name in-org) |
+| CPQ lines out of order | No ORDER BY in SOQL | Add `ORDER BY` with CPQ's line-order field (verify name in-org) |
+| Peppol sends but invoice fails validation | Missing required invoice fields (e.g. `SENDER_PEPPOL_ID`) | Cross-check against the required-fields list above |
+| Peppol "test" invoices appear successful but no partner received them | Account still on Peppol Test Network after PROD migration | Email `support@pdfbutler.com` to promote the username to Production Network |
+| FSL embedded Sign button missing in mobile | FSL App Extension not pointed at the URL field | Add the App Extension, point at `Embedded_SIGN_URL__c` |
+| Experience Cloud user cannot generate doc | Sharing not set to Public Read Only on `cadmus_core__*` objects | Update org-wide sharing as per table above |
+| Experience Cloud EMAIL Quick Action blank | Salesforce platform limit — Quick Action APIs not supported in Communities | Switch to `AUTO_EMAIL` or `EMAIL_DOCCONFIG` |
+
+---
+
+_Sources: [for CPQ](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-for-salesforce-cpq/), [for FSL](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-for-salesforce-field-service-lighting-fsl/), [Peppol](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-peppol-integration/), [by Salesforce Product](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-by-salesforce-product/). Per-child-page citations appear in each section above._

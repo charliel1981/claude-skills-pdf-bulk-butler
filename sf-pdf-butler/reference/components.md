@@ -34,11 +34,15 @@ Every packaged UI component (placed on FlexiPages, Quick Actions, or Flows). Cla
 
 **Placement**: same as Convertor (FlexiPages).
 **Purpose**: render the document BEFORE save/email/sign — reviewer workflow.
-**Delivery types supported**:
-- `BASE64` — never saves
-- `VIEW_THEN_SAVE` — don't save on preview; save on user confirm
-**Features**: optional toolbar with zoom + print.
-**Gotcha**: Salesforce's Clickjack Protection can render the Visualforce-backed preview blank. Academy has a video on the fix (usually: add the frame host to Trusted URLs).
+**Delivery Overwrite values supported** (Academy verbatim):
+- `BASE64` — "Never save"
+- `VIEW_THEN_SAVE` — "Do not save on preview"
+
+**Features** (verbatim): "enable the previewer toolbar for easy zooming and printing".
+
+**Clickjack gotcha** (verbatim): "In some cases when you generate the document, Visualforce page previewer fails to load with a blank page or white screen. This is because of the Clickjack security settings of Salesforce." Fix is covered in the Academy video — generally, add the Visualforce frame host to Trusted URLs.
+
+_Source: [PRE-VIEWER – PDF Butler Previewer](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/pre-viewer/)._
 
 ### Inline Edit (Live Edit)
 
@@ -57,9 +61,12 @@ Every packaged UI component (placed on FlexiPages, Quick Actions, or Flows). Cla
 ### Lightning Convert Component
 
 **Purpose**: similar to Convertor but designed for inline use in Lightning Flows / VF.
-**Parameters**: up to **5 flow-driven parameters** — types: `String`, `Double`, `Date`, `DateTime`, `Boolean`, `MultiSelect` (semicolon-separated).
-**Typical consumer**: a KEYVALUE DataSource that receives the 5 params.
-**Availability**: contact `support@pdfbutler.com`.
+**Parameter types** (verbatim, case-sensitive): `String`, `Double`, `Date`, `DateTime`, `Boolean`, `MultiSelect`.
+**MultiSelect format** (Academy verbatim): "these have to be separated by ';' eg abc;123;yxz".
+**Typical consumer**: a KEYVALUE DataSource that receives the params. Academy: "Feed KeyValue DataSources into Lightning Convert Component via Flow."
+**Availability**: "Get the component by contacting: support@pdfbutler.com" (verbatim).
+
+_Source: [Lightning Convert Component](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/lightning-convert-component/)._
 
 ### Document Selector
 
@@ -69,19 +76,29 @@ Every packaged UI component (placed on FlexiPages, Quick Actions, or Flows). Cla
 ### DocConfig Selector Logic by Flow
 
 **Purpose**: let a **Screen Flow** implement custom rules for which DocConfigs are mandatory vs optional, then hand off to the Convertor.
+
+**Input Apex-Defined type**: the class is published in the public ApexDoc as `cadmus_core.ComponentDataByFlowInput`; the Flow UI / admin docs commonly refer to the alias `PDFB_DocConfigByFlowInput`. Both resolve to the same class. Verbatim shape:
+
+```apex
+global with sharing class cadmus_core.ComponentDataByFlowInput {
+    @InvocableVariable(label='objectName') global String objectName;
+    @InvocableVariable(label='recordId')   global String recordId;
+}
+```
+
 **Invocable variables**:
 
-**Input**:
-- `input` — Apex-Defined type `PDFB_DocConfigByFlowInput`
-
-**Outputs**:
-- `alternative` (Text)
-- `locale` (Text)
-- `docConfigs` (Text collection — mandatory)
-- `optionalDocConfigs` (Text collection — optional, user can toggle)
-- `packs` (Text collection)
+- Input: `input` — Apex-Defined type (see above)
+- Outputs (from the selector Flow):
+  - `alternative` (Text)
+  - `locale` (Text)
+  - `docConfigs` (Text collection — mandatory)
+  - `optionalDocConfigs` (Text collection — optional, user can toggle)
+  - `packs` (Text collection)
 
 **Availability**: add-on component — request from Customer Success team.
+
+_Source: [`ComponentDataByFlowInput.html`](https://eu1.pdfbutler.com/files/api/cadmuscore/ComponentDataByFlowInput.html)._
 
 ### Dynamic Selector
 
@@ -103,8 +120,9 @@ Every packaged UI component (placed on FlexiPages, Quick Actions, or Flows). Cla
 
 ### Classic Button
 
+_Video-only / stub Academy page; no textual pattern is published. See [Classic Button](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/classic-button/) and request sample code from support@pdfbutler.com._
+
 **Purpose**: Salesforce Classic support — call PDF Butler from JS/URL buttons.
-**Docs status**: Academy page is a stub. Pattern follows Visualforce + URL params; request sample code from support.
 
 ### Convertor label translations
 
@@ -142,4 +160,23 @@ When no packaged component fits, wrap `cadmus_core.ConvertController.convertAura
 
 ---
 
-_Sources: 10 child pages under [pdf-butler-lightning-components/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/)._
+---
+
+## Academy child pages (per-component citations)
+
+| Component | URL |
+|---|---|
+| CONVERTOR – PDF Butler Convert Component | [/convertor/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/convertor/) |
+| PRE-VIEWER – PDF Butler Previewer | [/pre-viewer/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/pre-viewer/) |
+| Inline Edit (or Live Edit) | [/inline-edit/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/inline-edit/) (slug not verified) |
+| Lightning Quick Action Previewer | [/lightning-quick-action-previewer/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/lightning-quick-action-previewer/) (slug not verified) |
+| Lightning Convert Component | [/lightning-convert-component/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/lightning-convert-component/) |
+| Translating DocConfig names for the Convertor Component | [/translating-docconfig-names-for-the-convertor-component/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/translating-docconfig-names-for-the-convertor-component/) (slug not verified) |
+| CLASSIC BUTTON | [/classic-button/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/classic-button/) |
+| DOCUMENT SELECTOR | [/document-selector/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/document-selector/) (slug not verified) |
+| DocConfig Selector – logic by flow | [/docconfig-selector-logic-by-flow/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/docconfig-selector-logic-by-flow/) (slug not verified) |
+| Dynamic Selector | [/dynamic-selector/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/dynamic-selector/) (slug not verified) |
+
+Base: `https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-lightning-components/`
+
+_Sources: 10 child pages under the Components Academy section — URLs above. Five slugs confirmed; five inferred from title (visit the index page at the base URL to resolve any 404)._

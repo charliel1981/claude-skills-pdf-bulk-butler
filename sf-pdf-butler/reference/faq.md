@@ -22,8 +22,10 @@ Registration email (subject: "PDF Butler registration completed") contains **two
 
 ### Why do I get `Argument 1 cannot be null`?
 
-**Cause**: PDF Butler uses **Protected Custom Settings** for sensitive data, but Salesforce introduced a permission that ISV packages can't auto-assign.
-**Fix**: manually add the permission to your permission sets.
+**Cause (Academy verbatim)**: "Salesforce tells us the best practice is to use Protected Custom Settings for confidential information, then it goes and invents a new permission and then it does not allow ISV partner to add it to their permissionsets automatically. Sorry, you have to set it yourself."
+**Fix**: manually add the permission to your permission sets. **The Academy does NOT name the specific permission** — the typical Salesforce permission involved is "Manage Protected Custom Settings" (part of "Customize Application"), but confirm in the target org before assigning.
+
+_Source: [FAQ: why do I get error: "Argument 1 cannot be null"](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-faq/faq-why-do-i-get-error-argument-1-cannot-be-null/)._
 
 ### When I open PDF Butler config screen, I'm redirected to Home
 
@@ -68,7 +70,9 @@ Yes — pattern:
 3. Two Apex classes (support provides): `AWSService` + `Actionable_StoreInS3Bucket`
 4. **AFTER Actionable** pointed at `Actionable_StoreInS3Bucket`
 
-PDF Butler does **not** support AWS directly — debugging S3-specific issues is your AWS admin's problem. Same pattern works for Azure / Google Cloud Storage — ask support.
+Academy's support policy (verbatim): "We do not provide support on the configuration in AWS S3 so if you face any issues, make sure to debug them in the APEX together with your AWS Admin." Same process adaptable to Azure Storage or other object stores — ask support.
+
+_Source: [FAQ: Can we store a file in an AWS S3 bucket?](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-faq/faq-can-we-store-a-file-in-an-aws-s3-bucket/)._
 
 ### Have a textbox fixed to the bottom of the last page?
 
@@ -116,7 +120,16 @@ Pattern: an **APEX BEFORE Actionable** that mutates the DataSource SOQL at runti
 
 ### Can I get the list of Alternatives from Salesforce via SOQL?
 
-**Yes** — Alternatives are synchronized from the DocConfig configuration page into the DocConfig record (exact child object name not shown on the FAQ; query the schema for `cadmus_core__*Alternative*__c` after a sync). Academy video `oZQwZB-KzK0` walks through the sync. Use when you need to show Alternatives in a Salesforce UI list for end-user selection.
+_Video-only FAQ; see [faq-can-i-get-the-list-of-alternatives-in-salesforce](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-faq/faq-can-i-get-the-list-of-alternatives-in-salesforce/)._
+
+**Yes.** The Academy walks through it via video (`oZQwZB-KzK0`) — the FAQ text does not publish the schema object name. Query the installed org to find the actual child object, e.g.:
+
+```bash
+sf sobject list -o <alias> | grep -i alternative
+# or in Setup → Object Manager, search "Alternative" under cadmus_core namespace
+```
+
+Use this when you need to show Alternatives in a Salesforce UI list for end-user selection.
 
 ---
 

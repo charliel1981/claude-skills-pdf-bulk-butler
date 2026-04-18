@@ -23,7 +23,7 @@ Order within each phase is controlled by the Actionable `Order` field. Every Act
 
 - Link DocConfigs via junction records; set `Order` per DocConfig.
 - Control output: `cdm.pdfActionType = 'MERGE'` combines into one PDF; `NONE` keeps separate files.
-- The add-on class `PB_AddPdfMergeActions` adds page numbers / merged titles (separate package — contact support).
+- Page numbers, title headers, and watermarks on the merged output: set `cdm.mergeActions` to a `cadmus_core.PdfActions` instance. Fully in-package — see `reference/automation.md` → "PdfActions". Replaces the older `PB_AddPdfMergeActions` add-on class pattern.
 - Override at runtime: `cdm.docConfigIds = new List<Id>{ id1, id2 }` to subset a Pack.
 
 ---
@@ -79,14 +79,15 @@ Consult DocuSign's own docs for template ID format and signer mapping; PDF Butle
 ### AdobeSign — push to Adobe Sign agreement
 
 **Class**: `cadmus_core.Actionable_AdobeSign`
-**Required config**:
-- `Template Id` — Adobe Sign Agreement Template Id
-- `Recipient DataSource` — resolves to User / Lead / Contact
-- Signer mapping — **single signer only** supported
+**Required config** (verbatim parameter names):
+- `Template Id` — "The AdobeSign Agreement Template identifier"
+- `Recipient` — "A DataSource providing recipient information (User/Lead/Contact)"
 
-**Notes**:
-- Uses the standard Adobe Sign page: `/apex/echosign_dev1__AgreementTemplateProcess`
-- PDF Butler does not support Adobe Sign directly — Adobe-side issues go to Adobe.
+**Limitation** (Academy verbatim): "We only support 1 signer in our setup".
+
+**Support disclaimer** (verbatim): "FYI: We do not provide support on AdobeSign and we use the standard page from AdobeSign '/apex/echosign_dev1__AgreementTemplateProcess', any questions or issues must be directed to Adobe."
+
+_Source: [Actionable AdobeSign](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/actionable-adobesign/)._
 
 ### Run APEX Class — custom logic
 
@@ -104,15 +105,31 @@ Class must be global, implement the matching interface. Full interface signature
 
 ### Get Thumbnail — embed file thumbnails into the doc
 
-**Class**: `PDFButler_Actionable_GetThumbnailsV2`
-**Sizes**: `THUMB120BY90`, `THUMB240BY180`, `THUMB720BY480`
-**Max count**: ~20 images (smaller sizes = more possible per call).
+**Class**: `PDFButler_Actionable_GetThumbnailsV2` (verbatim)
+**Configuration parameters** (verbatim labels):
+- `Get Thumbnail Files DataSource`
+- `Get Thumbnail Pictures DataSource`
+- `Get Thumbnail Size` — one of `THUMB120BY90`, `THUMB240BY180`, `THUMB720BY480`
+
+**Max count** (Academy verbatim): "The number of images that can be retrieved depends on the size of the thumbnails, can be up to 20" — i.e. 20 is a **ceiling**, not a documented default. Smaller sizes fit more.
+
+**Required SOQL** (Academy verbatim — "This must be a SOQL Data Source and the SOQL must have following fields"):
+
+```sql
+SELECT Id, ContentDocument.Id, ContentDocument.LatestPublishedVersionId, ContentDocument.FileType
+FROM ContentDocumentLink
+WHERE LinkedEntityId = :recordId
+AND ContentDocument.FileType IN ('JPG', 'PNG')
+```
+
 **Setup**:
-1. Create a DataSource fetching the files (ContentDocumentLink query)
+1. Create the SOQL DataSource above
 2. Create a child `PICTURE` DataSource marked `NotApplicable` (so it doesn't re-query)
 3. Use a `PICTURE` ConfigType in the template pointing at the child DS
 
 **Win**: works without `API Enabled` user permission → suitable for Community / Experience Cloud.
+
+_Source: [Actionable Get Thumbnail](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/actionable-get-thumbnail/)._
 
 ### Get Thumbnail URL — embed via URL reference
 
@@ -155,36 +172,65 @@ Three options depending on source:
 ## Flow invocable: Convert a DOCX to PDF
 
 **Label in Flow**: `Convert a DOCX to PDF`
-**Apex class**: `cadmus_core.DocxToPdfInvocable` (inferred from global class list)
+**Apex class**: `cadmus_core.DocxToPdfInvocable`
+**Method**: `global static List<InvocableConvertDocxToPdfDataModelReturn> convertToPdf(List<InvocableConvertDocxToPdfDataModel> data)`
 
-### Inputs
+### Input wrapper — `DocxToPdfInvocable.InvocableConvertDocxToPdfDataModel`
 
-| Name | Type | Required | Default |
+| Property | Type | `@InvocableVariable` label | Required |
 |---|---|---|---|
-| `Content Document Id` | ID | Yes | — |
-| `Record Id` | ID | Yes | — |
-| `Run Async` | Boolean | No | `false` |
-| `Save as new Content Document Version` | Boolean | No | `false` |
+| `contentDocumentId` | `Id` | `'Content Document Id'` | Yes (`required=true`) |
+| `recordId` | `Id` | `'Record Id'` | Yes (`required=true`) |
+| `runAsync` | `Boolean` | `'Run Async'` | No |
+| `saveAsNewVersion` | `Boolean` | `'Save as new Content Document version'` | No |
 
-### Outputs (only when `Run Async = false`)
+### Output wrapper — `DocxToPdfInvocable.InvocableConvertDocxToPdfDataModelReturn`
 
-| Name | Type | Notes |
+| Property | Type | `@InvocableVariable` label |
 |---|---|---|
-| `Content Document Id` | ID | Only when `Save as new Content Document Version = false` |
-| `Content Version Id` | ID | Always present sync |
+| `contentDocumentId` | `Id` | `'Content Document Id'` |
+| `contentVersionId` | `Id` | `'Content Version Id'` |
+
+Outputs populate only when `runAsync = false`. When `saveAsNewVersion = false`, only `contentDocumentId` is returned.
 
 ### Async semantics
 
-- **Set `Run Async = true`** when:
+- **Set `runAsync = true`** when:
   - Called from a trigger
   - The same transaction has prior DML (callouts-after-DML rule)
 - With async, no output vars — downstream Flow must wait for `ON_CONTENT_VERSION` hook or a platform event.
+
+_Source: [`DocxToPdfInvocable.html`](https://eu1.pdfbutler.com/files/api/cadmuscore/DocxToPdfInvocable.html)._
 
 ---
 
 ## Flow invocable: Convert DocConfig / Pack
 
-Exposed via `cadmus_core.ConvertInvocableWithReturnVariables`. Used when you want to run a full DocConfig or Pack (not just DOCX→PDF) from Flow. Variables broadly mirror `ConvertDataModel` — consult the external PDF `PDF Butler via Invocable v1.pdf` for the full variable list.
+Exposed via `cadmus_core.ConvertInvocableWithReturnVariables`. Used when you want to run a full DocConfig or Pack (not just DOCX→PDF) from Flow.
+
+**Method**:
+
+```apex
+global static List<InvocableConvertOutput> convertWithWrapper(
+    List<ConvertInvocable.InvocableConvertDataModel> data
+)
+```
+
+Note: the input type `ConvertInvocable.InvocableConvertDataModel` lives on a sibling class (`ConvertInvocable`) that is **not** published in the public ApexDoc — verify fields in-org if building a custom invocation. In practice, the Flow UI surfaces variables that mirror `ConvertController.ConvertDataModel` (see `reference/automation.md`).
+
+### Output wrapper — `ConvertInvocableWithReturnVariables.InvocableConvertOutput`
+
+| Property | Type | `@InvocableVariable` label |
+|---|---|---|
+| `attachmentId` | `Id` | _(no label — unannotated)_ |
+| `contentDocumentId` | `Id` | `'contentDocument Id'` |
+| `contentDocumentLinkId` | `Id` | `'contentDocumentLink Id'` |
+| `contentVersionId` | `Id` | `'ContentVersion Id'` |
+| `targetName` | `String` | `'Name of the generated document'` |
+
+**Heads-up**: the Flow output has **no `result` / `SUCCESS` field** — unlike the Apex `DocGenerationWrapper`. Downstream Flow logic can't short-circuit on the server-side result. Check `contentVersionId != null` as a success proxy in Flow.
+
+_Source: [`ConvertInvocableWithReturnVariables.html`](https://eu1.pdfbutler.com/files/api/cadmuscore/ConvertInvocableWithReturnVariables.html)._
 
 ---
 
@@ -201,4 +247,30 @@ Exposed via `cadmus_core.ConvertInvocableWithReturnVariables`. Used when you wan
 
 ---
 
-_Sources: [PDF Butler Packs section](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/) — 13 child pages._
+---
+
+## Academy child pages (per-Actionable citations)
+
+Confirmed slug → URL mapping for the 13 Packs section pages:
+
+| Title | URL |
+|---|---|
+| Lightning Flow Action – Convert DOCX to PDF | [/lightning-flow-action-convert-docx-to-pdf/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/lightning-flow-action-convert-docx-to-pdf/) |
+| Create PACK with additional DocConfigs | [/create-pack-with-additional-docconfigs/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/create-pack-with-additional-docconfigs/) |
+| Actionable AUTO_EMAIL | [/actionable-auto_email/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/actionable-auto_email/) |
+| Actionable EMAIL_DOCCONFIG | [/actionable-email_docconfig/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/actionable-email_docconfig/) |
+| Actionable EMAIL Quick Action | [/actionable-email-quick-action/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/actionable-email-quick-action/) |
+| Actionable SIGN Butler | [/actionable-sign-butler/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/actionable-sign-butler/) |
+| Actionable DocuSign | [/actionable-docusign/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/actionable-docusign/) |
+| Actionable AdobeSign | [/actionable-adobesign/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/actionable-adobesign/) |
+| Actionable run APEX Class | [/actionable-run-apex-class/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/actionable-run-apex-class/) |
+| Actionable Get Thumbnail | [/actionable-get-thumbnail/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/actionable-get-thumbnail/) |
+| Actionable Get Thumbnail URL | [/actionable-get-thumbnail-url/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/actionable-get-thumbnail-url/) |
+| Actionable Image by URL that is in a field | [/actionable-image-by-url-that-is-in-a-field/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/actionable-image-by-url-that-is-in-a-field/) |
+| Quick Chart Setup | [/quick-chart-setup/](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/quick-chart-setup/) |
+
+Base: `https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/`
+
+---
+
+_Sources: [PDF Butler Packs section](https://www.pdfbutler.com/academy/pdf-butler-academy/pdf-butler-packs/) — 13 child pages above._

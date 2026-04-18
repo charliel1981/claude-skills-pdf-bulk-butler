@@ -72,6 +72,30 @@ Every DataSource type. Claude reads this when wiring data into a DocConfig.
 **Use for**: data from external APIs, computed values, transformed JSON, or any shape SOQL can't produce.
 **Canonical example**: `APEXActionablesKEYVALUES.pdf` on the Academy shows JSON → KEYVALUE transformations.
 
+**Typed wrapper classes** (use instead of raw `Map<String, Object>` when intent matters):
+
+```apex
+// Single-record shape — pair with SINGLE-shaped KEYVALUE
+global with sharing class cadmus_core.SingleWrapper {
+    global SingleWrapper();
+    global Map<String, Object> data;   // KEYVALUE payload
+    global Object sfdcData;            // raw sObject for the row
+    global String type;
+}
+
+// List shape — pair with LIST-shaped KEYVALUE
+global with sharing class cadmus_core.ListWrapper {
+    global ListWrapper();
+    global List<Map<String, Object>> data;   // KEYVALUE rows
+    global List<Object> sfdcData;            // raw sObject rows
+    global String type;
+}
+```
+
+Seed either into the Before Actionable's `inputMap`, keyed by the customer DataSource Id.
+
+_Sources: [`SingleWrapper.html`](https://eu1.pdfbutler.com/files/api/cadmuscore/SingleWrapper.html), [`ListWrapper.html`](https://eu1.pdfbutler.com/files/api/cadmuscore/ListWrapper.html)._
+
 ### `REPORT`
 
 **Purpose**: use a Salesforce Report as the data source.
