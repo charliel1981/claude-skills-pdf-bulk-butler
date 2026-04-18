@@ -10,20 +10,27 @@ Two [Claude Code](https://docs.claude.com/en/docs/claude-code) skills that turn 
 
 | Skill | Package namespace | Covers |
 |---|---|---|
-| [`sf-pdf-butler`](./sf-pdf-butler/) | `cadmus_core` | Single-doc generation — DocConfigs, Packs, Actionables, Apex API, LWC/Flow integration, every ConfigType + DataSource + Lightning component + Tip/Trick from the [PDF Butler Academy](https://www.pdfbutler.com/academy/pdf-butler-academy/) |
-| [`sf-bulk-butler`](./sf-bulk-butler/) | `cadmus_batch` | Bulk generation — Batch Info records, scheduled/Apex/Flow launches, per-record Actionables, report-driven batches, Batch Backend add-on |
+| [`sf-pdf-butler`](./sf-pdf-butler/) | `cadmus_core` | Single-doc generation — DocConfigs, Packs, Actionables, Apex Convert API (all 31 ApexDoc classes), Agentforce-aware `PdfButlerCallable` cross-package dispatch, unit testing with `CadmusHttpCalloutMock`, native `PdfActions` watermarks, `@pdfbutler/migration-cli` (all 10 commands), LWC/Flow integration, every ConfigType + DataSource + Lightning component + Tip/Trick from the [PDF Butler Academy](https://www.pdfbutler.com/academy/pdf-butler-academy/) |
+| [`sf-bulk-butler`](./sf-bulk-butler/) | `cadmus_batch` | Bulk generation — Batch Info records with full field list, scheduled/Apex/Flow launches, per-record Run Actionables (Batch Size stays at 5–20, not forced to 1), report-driven batches with full `Reports.ReportManager` code, Batch Backend add-on with `RecordType = "Batch Backend"` + `BatchSize = 100` + merge/zip (`MERGED_PDF` / `ZIP_FILE`) output |
 
 ## Why use these
 
 Without the skill, asking Claude "how do I call PDF Butler from Apex?" gets a generic SOAP/REST guess. With it, Claude knows:
 
-- The exact Apex entry point (`cadmus_core.ConvertController.convertWithWrapper`)
+- The exact Apex entry point (`cadmus_core.ConvertController.convertWithWrapper`) with every `ConvertDataModel` field, `webService` vs `global` visibility, and all valid `deliveryOverwrite` values verbatim from the ApexDoc
 - That `wrapper.response.base64` is a Blob, not a String, and why your LWC breaks if you don't `EncodingUtil.base64Encode` it
-- How to choose between `AbstractBeforeActionable`, `AbstractDataSourceActionable`, and `AbstractBeforeWithDataSourcesActionable`
+- How to choose between `AbstractBeforeActionable`, `AbstractDataSourceActionable`, `AbstractBeforeWithDataSourcesActionable`, and `AbstractAfterActionable` (and that only the `After` variant receives the `DocGenerationWrapper`)
+- The **sanctioned unit-test pattern** — `cadmus_core.CadmusHttpCalloutMock.setTestCalloutMockSuccess(targetId)` so your tests don't hit the real PDF Butler endpoint
+- The **cross-package integration pattern** — `PdfButlerCallable` via `System.Callable` `'convert'` for ISV add-ons and **Agentforce custom actions** that can't take a static dependency on `cadmus_core`
+- That PDF Butler is **Agentforce-aware** — `MetadataWrapper.USAGE_TYPE.AGENTFORCE` + `CALLED_FROM_TYPE_CUSTOMER.AGENTFORCE` enum values are live
+- Native page numbers / title / `DRAFT`/`CONFIDENTIAL`/`SAMPLE` watermarks via `cdm.mergeActions = new PdfActions()` (no more "contact support for `PB_AddPdfMergeActions`")
 - Why `Run Async = true` matters for the Flow DOCX→PDF action
 - How to set up a new org idempotently (detect-before-install)
-- Every one of the 31 ConfigTypes, 13 DataSources, 13 Actionables, 10 Lightning components
-- CPQ bundle patterns, FSL service reports, Peppol invoicing, multi-language Alternatives
+- Every one of the 31 ConfigTypes, 13 DataSources, 13 Actionables, 10 Lightning components — with **verbatim Academy labels** (e.g. `Export PDF as PDF/a` not "PDF/A"; `Enable Forms` not "Enable Form Fields")
+- All 10 commands of the `@pdfbutler/migration-cli` sf-plugin, both auth modes (org alias + CI-friendly session/instance), every REST endpoint each command hits, verbatim failure-mode table
+- CPQ bundle patterns, FSL service reports, Peppol invoicing (with full Apex class list + HTTP status-code mapping), multi-language Alternatives
+
+**Quality commitment**: every class name, method signature, field label, enum value, and CLI flag is quoted verbatim from an official source (ApexDoc, Academy child page, npm README, CLI source). Claims that can't be traced to a source are explicitly labelled "verify in-org" rather than invented. Video-only Academy pages are labelled as such instead of fabricated from the video.
 
 ## Install
 
@@ -60,9 +67,9 @@ Start a Claude Code session and check `/skills` — you should see both listed. 
 
 Each skill is a folder containing a `SKILL.md` front-matter file (name + description + when-to-trigger guidance) plus optional `reference/*.md` files with deep-dive content. Claude automatically activates a skill when the user's message matches its description, then reads the relevant reference file on demand.
 
-- `sf-pdf-butler/SKILL.md` — lean 205-line index with post-install checklist and decision tree
-- `sf-pdf-butler/reference/*.md` — 11 deep-dive files (~2,000 lines total) covering everything from ConfigTypes to deployment
-- `sf-bulk-butler/SKILL.md` — single file since BULK Butler has a smaller surface
+- `sf-pdf-butler/SKILL.md` — lean ~220-line index with post-install checklist and decision tree
+- `sf-pdf-butler/reference/*.md` — 11 deep-dive files (~3,200 lines total) covering everything from ConfigTypes to deployment, every PDF Butler ApexDoc class, and full Migration CLI reference
+- `sf-bulk-butler/SKILL.md` — ~285-line single file since BULK Butler has a smaller surface
 
 More on Claude Code skills: [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills).
 
