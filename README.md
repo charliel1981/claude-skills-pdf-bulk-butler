@@ -111,3 +111,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). TL;DR: PRs welcome for corrections, mi
 ## Maintainer
 
 Charlie Lang — Salesforce contractor. Open an issue for corrections, or PR directly.
+
+## Cursor
+Open this folder in **Cursor Agents Window** (not the .code-workspace file).
+Path: `/Users/charlielang/Dropbox/GitHub/claude-skills-pdf-bulk-butler`

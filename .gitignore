@@ -10,3 +10,8 @@ node_modules/
 .env
 .env.local
 nanobanana-output/
+
+# --- Charlies Brain (local only) ---
+.context
+*.code-workspace
+# --- end Charlies Brain ---

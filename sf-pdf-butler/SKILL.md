@@ -215,3 +215,35 @@ When a user says "set up PDF Butler" or "check the install", run Steps 0–5 and
 - **Peppol Invoicing** package — installs on top of PDF Butler for e-invoicing. Covered in `reference/integrations.md`.
 
 Each has its own Academy/docs — this skill covers PDF Butler proper.
+
+## Model Routing — Fable 5 First
+
+This skill is orchestrated by Claude Fable 5 (`claude-fable-5`) as the session model. Keep judgment in the Fable session: requirement analysis, architecture decisions, and final review. Delegate self-contained subtasks via the Agent tool `model` param: `opus` (Claude Opus 4.8) is the DEFAULT tier for delegated work, `sonnet` ONLY when the task is genuinely basic (simple lookups, boilerplate), `haiku` for purely mechanical bulk. Do not spawn a subagent for work completable directly in a single response. Prompting reference: `~/.claude/skills/prompting-fable-opus/SKILL.md`.
+
+
+## Ultracode micro-task mode
+
+If the user's prompt contains the keyword `ultracode` (or the common typo `untracode`), do NOT work the items sequentially: follow the `ultracode-micro` skill and fan the work out as parallel micro-task agents via the Workflow tool (script: `~/.claude/skills/ultracode-micro/workflows/micro-tasks.js`).
+
+- **Fan-out unit for this skill:** one agent per DocConfig or DataSource being built/migrated
+- Keep file sets disjoint across agents; default tier `opus` — drop to `sonnet` only when the unit is genuinely basic, `haiku` for purely mechanical bulk stamps.
+- If the user asks for cross-AI checking or a Claude+Codex fleet, pass `crossCheck: true` so each result gets an independent Codex review.
+- Fewer than 3 independent units → say inline is cheaper and just do the work directly.
+- Without the keyword this section does not apply — follow the lean defaults in CLAUDE.md.
+
+
+## Autonomous web research
+
+Whenever knowledge could be stale or incomplete, look online WITHOUT being asked — verify before you build. Default triggers: version-specific behavior (Spring/Summer '26+), unfamiliar errors, design decisions, "best practice" or coding-pattern questions, and before writing any non-trivial pattern from scratch — search GitHub for a proven implementation first.
+
+- **First sources for this skill:** PDF Butler docs/knowledge base (pdfbutler.com), AppExchange listing changelog
+- Keep it inline and lightweight: 1-3 targeted WebSearch/WebFetch calls — NOT research agents.
+- Check this skill's bundled references first; the web is for what they don't cover or what may have changed since.
+- State what you verified and where it came from. If current docs contradict this skill's content, the docs win — say so and offer to update the skill.
+
+
+## Working discipline
+
+- **Docs are autonomous:** when work under this skill changes behavior or adds artifacts, update the relevant documentation in the same pass (ApexDoc/JSDoc headers, module README/CHANGELOG, .planning SUMMARY where present) — without being asked.
+- **Keep context low:** Grep before Read, read targeted line ranges not whole files, delegate bulk multi-file reading to subagents (or the Gemini satellite pass) and keep only conclusions. Subagents return condensed summaries, never raw file dumps.
+- **Self-improve:** when work under this skill goes wrong and gets fixed (user correction, failed deploy/test traced to guidance here, stale content), append one JSON line to `~/.claude/ultracode-micro/runs.jsonl`: `{"ts":"<ISO>","source":"sf-skill","skill":"<this skill>","lesson":"<one sentence>"}` — and grep that log for this skill's lessons before substantive work. If the same lesson already exists, edit this skill to fix the root cause instead, then suggest `/pack-build`.
