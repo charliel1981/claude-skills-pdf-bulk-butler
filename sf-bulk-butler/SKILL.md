@@ -22,6 +22,15 @@ metadata:
 
 Bulk-generate PDFs/DOCX from many Salesforce records at once. Runs **on top of PDF Butler** — it iterates records and calls the same DocConfig/Pack you'd use for single generation.
 
+## Data-governance preflight
+
+Before scheduling or launching a batch:
+
+- **SOQL scope** — Batch Info `SOQL`/`Count SOQL` must match exactly; review WHERE clauses so you don't sweep records the business didn't intend (e.g., all Accounts vs a segment).
+- **Volume limits** — non-prod caps at 25 records; prod batches can email many stakeholders — confirm `Emails` recipients and `Delivery Option` align with data-handling policy.
+- **PII in output** — each generated doc may contain fields from the underlying record; validate DocConfig DataSources against least-privilege field access.
+- **Audit trail** — job status emails and generated files are evidence of processing; align retention with compliance requirements before enabling cron schedules.
+
 ## When to trigger
 
 - User mentions **BULK Butler**, **Batch Info**, **`cadmus_batch`**, scheduled document generation, bulk PDF, mass document run.
@@ -291,9 +300,9 @@ Keep two scheduling layers separate:
 - **In-org (Salesforce-side):** schedule the batch itself with the Apex Scheduler — `System.schedule('<name>', '<cron>', new <Schedulable>())` — so it runs whether or not Claude is open. This is the right home for production recurring document runs.
 - **Claude-side:** for recurring *agent* work (launch a Batch Info run, poll status, summarise failures) use a scheduled task — `CronCreate`/`CronList`/`CronDelete`, or `/loop` for in-session polling (verified at code.claude.com/docs/en/scheduled-tasks.md). Recurring Claude tasks expire after **7 days**, so use the in-org scheduler for anything permanent.
 
-## Model Routing — Fable 5 First
+## Model Routing — Opus 5 First
 
-This skill is orchestrated by Claude Fable 5 (`claude-fable-5`) as the session model. Keep judgment in the Fable session: requirement analysis, architecture decisions, and final review. Delegate self-contained subtasks via the Agent tool `model` param: `opus` (Claude Opus 4.8) is the DEFAULT tier for delegated work, `sonnet` ONLY when the task is genuinely basic (simple lookups, boilerplate), `haiku` for purely mechanical bulk. Do not spawn a subagent for work completable directly in a single response. Prompting reference: `~/.claude/skills/prompting-fable-opus/SKILL.md`.
+This skill is orchestrated by Claude Opus 5 (`claude-opus-5`) as the session model. Keep judgment in the main session: requirement analysis, architecture decisions, and final review. Delegate self-contained subtasks via the Agent tool `model` param: `opus` (Claude Opus 5) is the DEFAULT tier for delegated work, `sonnet` ONLY when the task is genuinely basic (simple lookups, boilerplate), `haiku` for purely mechanical bulk. **Opus 5 delegates eagerly — cap it.** Do not spawn a subagent for work you can finish in a handful of tool calls, and never to verify your own work. Prompting reference: `~/.claude/skills/prompting-opus-5/SKILL.md`.
 
 
 ## Ultracode micro-task mode

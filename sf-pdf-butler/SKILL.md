@@ -88,6 +88,15 @@ Based on the user's task, read the matching file. They're all under `reference/`
 
 Don't dump reference content — only read the file you need. If a user's question spans two areas, read both files before answering.
 
+## Data-governance preflight
+
+Before generating documents in production (especially bulk or customer-facing output):
+
+- **Confirm data scope** — DocConfig DataSources/SOQL only pull fields the recipient is entitled to see; redact or exclude PII/financial fields not needed for the document.
+- **Stage alignment** — `cadmus_core__Stage__c` must match org type (sandbox vs prod); wrong stage breaks record references after migration.
+- **Retention & delivery** — know where output lands (Files, Attachments, email, external storage) and whether that matches your data-retention and DLP policies.
+- **Consent & purpose** — customer/regulatory mail (quotes, invoices, statements) needs a documented lawful basis; test templates with synthetic data in non-prod first.
+
 ## Post-install setup — detect first, then fix
 
 **Never run setup steps blindly.** Always detect what's already in place and skip whatever's done. Run this sequence top-to-bottom when a user asks "is PDF Butler set up?" or "install PDF Butler in this org". Substitute `-o <alias>` with the target org alias.
@@ -216,9 +225,9 @@ When a user says "set up PDF Butler" or "check the install", run Steps 0–5 and
 
 Each has its own Academy/docs — this skill covers PDF Butler proper.
 
-## Model Routing — Fable 5 First
+## Model Routing — Opus 5 First
 
-This skill is orchestrated by Claude Fable 5 (`claude-fable-5`) as the session model. Keep judgment in the Fable session: requirement analysis, architecture decisions, and final review. Delegate self-contained subtasks via the Agent tool `model` param: `opus` (Claude Opus 4.8) is the DEFAULT tier for delegated work, `sonnet` ONLY when the task is genuinely basic (simple lookups, boilerplate), `haiku` for purely mechanical bulk. Do not spawn a subagent for work completable directly in a single response. Prompting reference: `~/.claude/skills/prompting-fable-opus/SKILL.md`.
+This skill is orchestrated by Claude Opus 5 (`claude-opus-5`) as the session model. Keep judgment in the main session: requirement analysis, architecture decisions, and final review. Delegate self-contained subtasks via the Agent tool `model` param: `opus` (Claude Opus 5) is the DEFAULT tier for delegated work, `sonnet` ONLY when the task is genuinely basic (simple lookups, boilerplate), `haiku` for purely mechanical bulk. **Opus 5 delegates eagerly — cap it.** Do not spawn a subagent for work you can finish in a handful of tool calls, and never to verify your own work. Prompting reference: `~/.claude/skills/prompting-opus-5/SKILL.md`.
 
 
 ## Ultracode micro-task mode
