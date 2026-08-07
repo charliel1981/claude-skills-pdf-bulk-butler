@@ -19,6 +19,7 @@ Every DataSource type. Claude reads this when wiring data into a DocConfig.
 | Same-query re-used with different filters | Filtered DataSources |
 | Multi-level parent→child data model | Nested DataSources |
 | Translated picklist labels per locale | Picklist Translations |
+| **Adding a field to an existing DataSource** | see [the two field lists](#editing-an-existing-datasource-the-two-field-lists) |
 
 ---
 
@@ -140,6 +141,59 @@ _Sources: [`SingleWrapper.html`](https://eu1.pdfbutler.com/files/api/cadmuscore/
 **Purpose**: resolve translated picklist labels from Salesforce **Translation Workbench** based on user/document locale.
 **Benefit**: stop hardcoding translated values in documents — central maintenance in Setup → Translation Workbench.
 **Consumed by**: `SINGLE` ConfigType with "Translate" option pointing at this DS.
+
+---
+
+## Editing an existing DataSource: the two field lists
+
+A `cadmus_core__Data_Source__c` record stores its field set **twice**, in two places nothing keeps in
+sync. Adding a field to one and not the other is the most common way to break a working DataSource.
+
+| Field | Role | Symptom when a field is missing from it |
+|---|---|---|
+| `cadmus_core__SOQL__c` | the query that **executes at render time** | **silent null** — the merge field is simply empty, no error anywhere |
+| `cadmus_core__JSON__c` → `fields` array | the **builder model**: what the UI validates against, and what it regenerates the SOQL *from* | `ParentQueryField not found: <FieldName>` on "Save to Server", even though the field is plainly in the SOQL |
+
+**Add a field to both.** Inspect them together:
+
+```bash
+sf data query --target-org <alias> --result-format json -q \
+  "SELECT cadmus_core__SOQL__c, cadmus_core__JSON__c, cadmus_core__SOQL_Builder_Managed__c
+   FROM cadmus_core__Data_Source__c WHERE Name = '<name>'"
+```
+
+A `fields` entry looks like this — note it is **not** the synthetic `base64`/`name`/`parentId` triple
+that `PICTURE_LIST` DataSources use:
+
+```json
+{"type":"REFERENCE","relationshipName":"Foo__r","referenceTo":"Foo__c",
+ "name":"Foo__c","label":"Foo","fullFieldName":"Foo__c","selected":true}
+{"type":"STRING","relationshipName":null,"referenceTo":null,
+ "name":"Name","label":"Foo Name","fullFieldName":"Foo__r.Name","selected":true}
+```
+
+### ⚠️ `SOQL_Builder_Managed__c = true` makes the builder model authoritative
+
+With that flag `true`, a single **"Save to Server" in the UI regenerates `SOQL__c` from the builder
+model** — silently discarding every field added to the SOQL directly (by Apex, by a raw splice, by
+anything that did not also update the model).
+
+A DataSource whose SOQL has drifted ahead of its model will therefore lose that drift the first time
+anyone opens and saves it in the UI, breaking every DocConfig that shares it at once, with no error.
+
+Setting the flag to `false` is **render-neutral** — the engine uses the raw `SOQL__c` either way — so
+it is a safe mitigation for a DataSource maintained outside the UI. Check it before touching a shared
+DataSource in the UI.
+
+### Exported bundles carry a stale copy
+
+An already-exported bundle contains **its own snapshot** of the parent DataSource's field list, and
+that snapshot does **not** inherit later edits to the live org record. Add a field to the master
+DataSource after exporting, and every import of that stale bundle re-asserts the old list. Re-export,
+or backfill each bundle's snapshot individually.
+
+_Source: in-org observation — `cadmus_core` 1.518, `@pdfbutler/migration-cli` 0.0.29, Stages `TEST`
+and `PROD`. Not documented in the Academy; verify in-org before relying on the exact JSON shape._
 
 ---
 
