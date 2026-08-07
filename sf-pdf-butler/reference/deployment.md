@@ -97,7 +97,7 @@ Both `adminsettings` and `admincredentials` require PDF Butler package **v1.440+
 | Flag | Purpose |
 |---|---|
 | `-t, --target` | SF org alias/username. Required unless `--session`+`--instance` present |
-| `-i, --id` | Record ID(s) — separate multiple with whitespace (most commands) or commas (DataSource + some Pack usage) |
+| `-i, --id` | Record ID(s) — separate multiple with whitespace (most commands) or commas (DataSource + some Pack usage). **For `exportdatasource`/`importdatasource` this is the composite `CustomerDataSourceId`, not the Salesforce record Id** — see [DataSource identifiers](#datasource-identifiers) |
 | `-o, --out` | Output directory (export commands) |
 | `-f, --folder` / `--config` | Input directory (import commands — note: the short flag is `-f` everywhere but the long name is `--config` on `pb:import` and `--folder` elsewhere) |
 | `-s, --stage` | CADMUS stage (`DEV1`, `TEST`, `UAT`, `QA`, `STAGING`, `PROD`…) — must match the target org's admin settings |
@@ -115,6 +115,46 @@ Both `adminsettings` and `admincredentials` require PDF Butler package **v1.440+
 | `--shortpaths` | Drop stage + ID suffix from filenames — leaves only the DocConfig name |
 | `--session`, `--instance` | Session-ID auth (override `-t`) |
 | `--json` | Structured JSON output |
+
+### DataSource identifiers
+
+`exportdatasource` / `importdatasource` do **not** take a Salesforce record Id. They take the
+composite `CustomerDataSourceId`:
+
+```
+<15-char org Id>_<15-char DataSource record Id>      e.g. 00DXXXXXXXXXXXX_a2LXXXXXXXXXXXX
+```
+
+Passing the bare 18-char record Id fails with a message that points you at the wrong thing:
+
+```
+[INFO]  Exporting DataSource (1/1): a2LP400000XXXXXXXX.
+[ERROR] DataSource export failed for ID: a2LP400000XXXXXXXX.
+Error (1): DataSource export failed. Check the IDs and try again.
+```
+
+The record exists, so "check the IDs" sends you re-verifying it. Read the composite value off the
+record instead of assembling it by hand — truncating 18 chars to 15 is easy to get wrong:
+
+```bash
+sf data query --target-org <alias> --result-format csv -q \
+  "SELECT Id, Name, cadmus_core__CustomerDataSourceId__c
+   FROM cadmus_core__Data_Source__c WHERE Name = '<name>'"
+```
+
+**`cadmus_core__CustomerDataSourceId__c` is package read-only.** Attempting to set it returns
+`Unable to create/update fields: cadmus_core__CustomerDataSourceId__c. Please check the security
+settings of this field…` — which reads like an FLS problem and is not one. No profile can write it.
+
+**Cross-org prefixes are harmless.** An org that received DataSources by migration ends up with a
+**mix**: natively-created records carry that org's own Id, migrated ones keep the **source** org's Id.
+A child `PICTURE_LIST` created natively will therefore have a different org prefix from a migrated
+parent, and (per the above) cannot be aligned to it. This is fine — the org-Id half is provenance,
+not a runtime key. Verified by render: a natively-created child resolved correctly under a migrated
+parent carrying another org's prefix.
+
+_Source: in-org observation — `cadmus_core` 1.518, `@pdfbutler/migration-cli` 0.0.29, Stage `PROD`.
+Not documented in the Academy; verify in-org._
 
 ### Which REST endpoint each command hits
 
